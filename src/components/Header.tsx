@@ -30,9 +30,9 @@ const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto px-6 h-20 flex items-center justify-between gap-4">
-        <a href="#inicio" className="flex-shrink-0">
+        <button onClick={() => navigate("/")} className="flex-shrink-0">
           <img src={logo} alt="Horen" className="h-7 w-auto" />
-        </a>
+        </button>
 
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
