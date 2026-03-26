@@ -13,10 +13,26 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
+  const handleNavClick = (href: string) => {
+    if (href === "/blog") {
+      navigate("/blog");
+      return;
+    }
+    const hash = href.replace("/", "");
+    if (window.location.pathname !== "/") {
+      navigate(href);
+    } else if (hash === "#inicio") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   const navLinks = [
     { label: "Início", href: "/#inicio" },
     { label: "Produtos", href: "/#produtos" },
     { label: "Sobre", href: "/#sobre" },
+    { label: "Blog", href: "/blog" },
     { label: "Contato", href: "/#contato" },
   ];
 
