@@ -1,12 +1,17 @@
 import { useState } from "react";
-import { ShoppingBag, Menu, X } from "lucide-react";
+import { ShoppingBag, Menu, X, Search } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "@/assets/horen-logo-azul.jpg";
+import logo from "@/assets/horen-logo.png";
+import { products } from "@/data/products";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const { totalItems, openCart } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   const navLinks = [
     { label: "Início", href: "#inicio" },
@@ -15,11 +20,18 @@ const Header = () => {
     { label: "Contato", href: "#contato" },
   ];
 
+  const filteredProducts = searchQuery.length > 1
+    ? products.filter((p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 bg-card/80 backdrop-blur-xl border-b border-border/50">
-      <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+    <header className="fixed top-10 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
+      <div className="container mx-auto px-6 h-20 flex items-center justify-between gap-4">
         <a href="#inicio" className="flex-shrink-0">
-          <img src={logo} alt="Horen" className="h-8 w-auto" />
+          <img src={logo} alt="Horen" className="h-7 w-auto" />
         </a>
 
         <nav className="hidden md:flex items-center gap-8">
@@ -27,17 +39,77 @@ const Header = () => {
             <a
               key={link.href}
               href={link.href}
-              className="text-sm font-body font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm font-body font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               {link.label}
             </a>
           ))}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative">
+            <button
+              onClick={() => setSearchOpen(!searchOpen)}
+              className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
+            >
+              <Search className="w-5 h-5 text-foreground" />
+            </button>
+
+            <AnimatePresence>
+              {searchOpen && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 280 }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+                >
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+                    <Search className="w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Buscar produtos..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      autoFocus
+                      className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none"
+                    />
+                  </div>
+                  {filteredProducts.length > 0 && (
+                    <div className="max-h-60 overflow-y-auto">
+                      {filteredProducts.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            navigate(`/produto/${p.id}`);
+                            setSearchOpen(false);
+                            setSearchQuery("");
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-secondary transition-colors flex justify-between items-center"
+                        >
+                          <div>
+                            <p className="text-sm font-heading font-semibold text-foreground">{p.name}</p>
+                            <p className="text-xs text-muted-foreground">{p.category}</p>
+                          </div>
+                          <span className="text-sm font-heading font-bold text-primary">
+                            {p.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchQuery.length > 1 && filteredProducts.length === 0 && (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum produto encontrado</p>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Cart */}
           <button
             onClick={openCart}
-            className="relative p-2.5 hover:bg-muted rounded-xl transition-colors"
+            className="relative p-2.5 hover:bg-secondary rounded-xl transition-colors"
           >
             <ShoppingBag className="w-5 h-5 text-foreground" />
             {totalItems > 0 && (
@@ -51,9 +123,10 @@ const Header = () => {
             )}
           </button>
 
+          {/* Mobile menu */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 hover:bg-muted rounded-xl transition-colors"
+            className="md:hidden p-2 hover:bg-secondary rounded-xl transition-colors"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -74,7 +147,7 @@ const Header = () => {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block text-base font-body font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                  className="block text-base font-body font-medium text-muted-foreground hover:text-primary transition-colors py-2"
                 >
                   {link.label}
                 </a>

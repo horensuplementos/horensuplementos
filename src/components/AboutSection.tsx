@@ -26,7 +26,7 @@ const values = [
 
 const AboutSection = () => {
   return (
-    <section id="sobre" className="py-24 md:py-32 bg-primary">
+    <section id="sobre" className="py-24 md:py-32 bg-card">
       <div className="container mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -34,13 +34,13 @@ const AboutSection = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <p className="text-sm font-body tracking-[0.3em] uppercase text-primary-foreground/50 mb-4">
+          <p className="text-sm font-body tracking-[0.3em] uppercase text-muted-foreground mb-4">
             Sobre a Horen
           </p>
-          <h2 className="font-heading text-4xl md:text-5xl font-bold text-primary-foreground mb-6">
+          <h2 className="font-heading text-4xl md:text-5xl font-bold text-foreground mb-6">
             Excelência em cada detalhe
           </h2>
-          <p className="text-primary-foreground/60 font-body max-w-2xl mx-auto text-base leading-relaxed">
+          <p className="text-muted-foreground font-body max-w-2xl mx-auto text-base leading-relaxed">
             A Horen é uma marca de suplementos de alta qualidade, com matéria prima
             selecionada e formulações eficientes testadas para ganho de resultados.
             Produtos para todas as pessoas que buscam uma melhora no estilo de vida.
@@ -55,13 +55,13 @@ const AboutSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="text-center p-8 rounded-2xl bg-primary-foreground/5 border border-primary-foreground/10"
+              className="text-center p-8 rounded-2xl bg-secondary border border-border"
             >
-              <item.icon className="w-8 h-8 text-primary-foreground/70 mx-auto mb-4" />
-              <h3 className="font-heading text-lg font-semibold text-primary-foreground mb-2">
+              <item.icon className="w-8 h-8 text-primary mx-auto mb-4" />
+              <h3 className="font-heading text-lg font-semibold text-foreground mb-2">
                 {item.title}
               </h3>
-              <p className="text-sm text-primary-foreground/50 font-body leading-relaxed">
+              <p className="text-sm text-muted-foreground font-body leading-relaxed">
                 {item.description}
               </p>
             </motion.div>
