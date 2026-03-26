@@ -6,43 +6,43 @@
 
 @layer base {
   :root {
-    --background: 200 100% 12%;
+    --background: 213 56% 11%;
     --foreground: 40 30% 93%;
 
-    --card: 200 80% 10%;
+    --card: 213 50% 14%;
     --card-foreground: 40 30% 93%;
 
-    --popover: 200 80% 10%;
+    --popover: 213 50% 14%;
     --popover-foreground: 40 30% 93%;
 
     --primary: 40 30% 88%;
-    --primary-foreground: 200 100% 12%;
+    --primary-foreground: 213 56% 11%;
 
-    --secondary: 200 60% 18%;
+    --secondary: 213 40% 18%;
     --secondary-foreground: 40 30% 93%;
 
-    --muted: 200 40% 16%;
-    --muted-foreground: 200 15% 55%;
+    --muted: 213 35% 20%;
+    --muted-foreground: 213 15% 55%;
 
     --accent: 40 40% 78%;
-    --accent-foreground: 200 100% 12%;
+    --accent-foreground: 213 56% 11%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 200 30% 20%;
-    --input: 200 30% 22%;
+    --border: 213 30% 22%;
+    --input: 213 30% 24%;
     --ring: 40 30% 88%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 200 100% 8%;
+    --sidebar-background: 213 56% 8%;
     --sidebar-foreground: 40 30% 93%;
     --sidebar-primary: 40 30% 88%;
-    --sidebar-primary-foreground: 200 100% 8%;
-    --sidebar-accent: 200 60% 15%;
+    --sidebar-primary-foreground: 213 56% 8%;
+    --sidebar-accent: 213 40% 15%;
     --sidebar-accent-foreground: 40 30% 93%;
-    --sidebar-border: 200 30% 18%;
+    --sidebar-border: 213 30% 18%;
     --sidebar-ring: 40 30% 88%;
 
     --font-heading: 'Outfit', sans-serif;

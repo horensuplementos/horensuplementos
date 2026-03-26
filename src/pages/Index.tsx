@@ -1,6 +1,5 @@
-import PromoBanner from "@/components/PromoBanner";
 import Header from "@/components/Header";
-import HeroSection from "@/components/HeroSection";
+import HeroBanner from "@/components/HeroBanner";
 import ProductsSection from "@/components/ProductsSection";
 import AboutSection from "@/components/AboutSection";
 import Footer from "@/components/Footer";
@@ -9,10 +8,11 @@ import CartDrawer from "@/components/CartDrawer";
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
-      <PromoBanner />
       <Header />
       <CartDrawer />
-      <HeroSection />
+      <div className="pt-20">
+        <HeroBanner />
+      </div>
       <ProductsSection />
       <AboutSection />
       <Footer />
