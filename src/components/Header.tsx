@@ -36,13 +36,20 @@ const Header = () => {
 
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <a
+            <button
               key={link.href}
-              href={link.href}
+              onClick={() => {
+                if (window.location.pathname !== "/") {
+                  navigate(link.href);
+                } else {
+                  const hash = link.href.replace("/", "");
+                  document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
               className="text-sm font-body font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               {link.label}
-            </a>
+            </button>
           ))}
         </nav>
 
