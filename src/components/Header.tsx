@@ -160,12 +160,7 @@ const Header = () => {
                   key={link.href}
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    if (window.location.pathname !== "/") {
-                      navigate(link.href);
-                    } else {
-                      const hash = link.href.replace("/", "");
-                      document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
-                    }
+                    handleNavClick(link.href);
                   }}
                   className="block text-base font-body font-medium text-muted-foreground hover:text-primary transition-colors py-2 w-full text-left"
                 >
