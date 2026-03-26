@@ -14,10 +14,10 @@ const Header = () => {
   const navigate = useNavigate();
 
   const navLinks = [
-    { label: "Início", href: "#inicio" },
-    { label: "Produtos", href: "#produtos" },
-    { label: "Sobre", href: "#sobre" },
-    { label: "Contato", href: "#contato" },
+    { label: "Início", href: "/#inicio" },
+    { label: "Produtos", href: "/#produtos" },
+    { label: "Sobre", href: "/#sobre" },
+    { label: "Contato", href: "/#contato" },
   ];
 
   const filteredProducts = searchQuery.length > 1
