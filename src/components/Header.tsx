@@ -14,10 +14,10 @@ const Header = () => {
   const navigate = useNavigate();
 
   const navLinks = [
-    { label: "Início", href: "#inicio" },
-    { label: "Produtos", href: "#produtos" },
-    { label: "Sobre", href: "#sobre" },
-    { label: "Contato", href: "#contato" },
+    { label: "Início", href: "/#inicio" },
+    { label: "Produtos", href: "/#produtos" },
+    { label: "Sobre", href: "/#sobre" },
+    { label: "Contato", href: "/#contato" },
   ];
 
   const filteredProducts = searchQuery.length > 1
@@ -30,19 +30,26 @@ const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto px-6 h-20 flex items-center justify-between gap-4">
-        <a href="#inicio" className="flex-shrink-0">
+        <button onClick={() => navigate("/")} className="flex-shrink-0">
           <img src={logo} alt="Horen" className="h-7 w-auto" />
-        </a>
+        </button>
 
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <a
+            <button
               key={link.href}
-              href={link.href}
+              onClick={() => {
+                if (window.location.pathname !== "/") {
+                  navigate(link.href);
+                } else {
+                  const hash = link.href.replace("/", "");
+                  document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
               className="text-sm font-body font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               {link.label}
-            </a>
+            </button>
           ))}
         </nav>
 
@@ -140,14 +147,21 @@ const Header = () => {
           >
             <nav className="px-6 py-4 space-y-3">
               {navLinks.map((link) => (
-                <a
+                <button
                   key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block text-base font-body font-medium text-muted-foreground hover:text-primary transition-colors py-2"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (window.location.pathname !== "/") {
+                      navigate(link.href);
+                    } else {
+                      const hash = link.href.replace("/", "");
+                      document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="block text-base font-body font-medium text-muted-foreground hover:text-primary transition-colors py-2 w-full text-left"
                 >
                   {link.label}
-                </a>
+                </button>
               ))}
             </nav>
           </motion.div>
