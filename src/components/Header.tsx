@@ -28,7 +28,7 @@ const Header = () => {
     : [];
 
   return (
-    <header className="fixed top-10 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
+    <header className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto px-6 h-20 flex items-center justify-between gap-4">
         <a href="#inicio" className="flex-shrink-0">
           <img src={logo} alt="Horen" className="h-7 w-auto" />
@@ -47,7 +47,6 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-2">
-          {/* Search */}
           <div className="relative">
             <button
               onClick={() => setSearchOpen(!searchOpen)}
@@ -106,7 +105,6 @@ const Header = () => {
             </AnimatePresence>
           </div>
 
-          {/* Cart */}
           <button
             onClick={openCart}
             className="relative p-2.5 hover:bg-secondary rounded-xl transition-colors"
@@ -123,7 +121,6 @@ const Header = () => {
             )}
           </button>
 
-          {/* Mobile menu */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 hover:bg-secondary rounded-xl transition-colors"
