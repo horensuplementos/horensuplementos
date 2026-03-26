@@ -33,10 +33,10 @@ const ProductCard = ({ product, index }: ProductCardProps) => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ delay: index * 0.15, duration: 0.5 }}
-      className="group bg-card rounded-2xl overflow-hidden border border-border/50 hover:border-border transition-all duration-300 hover:shadow-lg"
+      className="group bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5"
     >
       <div
-        className="relative aspect-square bg-muted overflow-hidden cursor-pointer"
+        className="relative aspect-square bg-secondary overflow-hidden cursor-pointer"
         onClick={() => navigate(`/produto/${product.id}`)}
       >
         <img
@@ -48,7 +48,7 @@ const ProductCard = ({ product, index }: ProductCardProps) => {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute top-4 left-4">
-          <span className="bg-card/90 backdrop-blur-sm text-foreground text-xs font-body font-medium px-3 py-1.5 rounded-lg">
+          <span className="bg-background/90 backdrop-blur-sm text-foreground text-xs font-body font-medium px-3 py-1.5 rounded-lg">
             {product.category}
           </span>
         </div>
@@ -59,7 +59,7 @@ const ProductCard = ({ product, index }: ProductCardProps) => {
           {product.subtitle}
         </p>
         <h3
-          className="font-heading text-lg font-semibold text-foreground mb-1 cursor-pointer hover:text-accent transition-colors"
+          className="font-heading text-lg font-semibold text-foreground mb-1 cursor-pointer hover:text-primary transition-colors"
           onClick={() => navigate(`/produto/${product.id}`)}
         >
           {product.name}
@@ -67,13 +67,13 @@ const ProductCard = ({ product, index }: ProductCardProps) => {
         <p className="text-sm text-muted-foreground mb-4">{product.weight}</p>
 
         <div className="flex items-center justify-between">
-          <span className="font-heading text-2xl font-bold text-foreground">
+          <span className="font-heading text-2xl font-bold text-primary">
             {formatPrice(product.price)}
           </span>
           <Button
             onClick={() => addItem(product)}
             size="sm"
-            className="rounded-xl gap-2 font-body"
+            className="rounded-xl gap-2 font-body bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <ShoppingBag className="w-4 h-4" />
             Comprar

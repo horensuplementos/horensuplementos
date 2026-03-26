@@ -1,5 +1,5 @@
 import { Instagram, Mail, Phone } from "lucide-react";
-import logo from "@/assets/horen-logo-azul.jpg";
+import logo from "@/assets/horen-logo.png";
 
 const Footer = () => {
   return (
@@ -7,7 +7,7 @@ const Footer = () => {
       <div className="container mx-auto px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
-            <img src={logo} alt="Horen" className="h-8 w-auto mb-4" />
+            <img src={logo} alt="Horen" className="h-7 w-auto mb-4" />
             <p className="text-sm text-muted-foreground font-body leading-relaxed max-w-xs">
               Suplementos premium para quem leva saúde e performance a sério.
               Qualidade, confiança e resultados reais.
@@ -21,7 +21,7 @@ const Footer = () => {
                 <a
                   key={item}
                   href={`#${item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}
-                  className="block text-sm text-muted-foreground hover:text-foreground transition-colors font-body"
+                  className="block text-sm text-muted-foreground hover:text-primary transition-colors font-body"
                 >
                   {item}
                 </a>
@@ -34,14 +34,14 @@ const Footer = () => {
             <div className="space-y-3">
               <a
                 href="mailto:contato@horen.com.br"
-                className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors font-body"
+                className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors font-body"
               >
                 <Mail className="w-4 h-4" />
                 contato@horen.com.br
               </a>
               <a
                 href="tel:+5511999999999"
-                className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors font-body"
+                className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors font-body"
               >
                 <Phone className="w-4 h-4" />
                 (11) 99999-9999
@@ -50,7 +50,7 @@ const Footer = () => {
                 href="https://instagram.com/horen"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors font-body"
+                className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors font-body"
               >
                 <Instagram className="w-4 h-4" />
                 @horen
