@@ -54,14 +54,7 @@ const Header = () => {
           {navLinks.map((link) => (
             <button
               key={link.href}
-              onClick={() => {
-                if (window.location.pathname !== "/") {
-                  navigate(link.href);
-                } else {
-                  const hash = link.href.replace("/", "");
-                  document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
-                }
-              }}
+              onClick={() => handleNavClick(link.href)}
               className="text-sm font-body font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               {link.label}
