@@ -1,9 +1,9 @@
 import { Instagram, Mail, Phone } from "lucide-react";
-import logo from "@/assets/horen-logo.png";
+import logo from "@/assets/horen-logo-transparent.png";
 
 const Footer = () => {
   return (
-    <footer id="contato" className="bg-card border-t border-border">
+    <footer id="contato" className="bg-background border-t border-border">
       <div className="container mx-auto px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
