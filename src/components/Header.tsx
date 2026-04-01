@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { ShoppingBag, Menu, X, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ShoppingBag, Menu, X, Search, User, LogOut } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/horen-logo.png";
 import { products } from "@/data/products";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const Header = () => {
   const { totalItems, openCart } = useCart();
