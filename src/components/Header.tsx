@@ -1,17 +1,30 @@
-import { useState } from "react";
-import { ShoppingBag, Menu, X, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ShoppingBag, Menu, X, Search, User, LogOut } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/horen-logo.png";
 import { products } from "@/data/products";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const Header = () => {
   const { totalItems, openCart } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleNavClick = (href: string) => {
     if (href === "/blog") {
@@ -120,6 +133,27 @@ const Header = () => {
               )}
             </AnimatePresence>
           </div>
+
+          {user ? (
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+              }}
+              className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
+              title="Sair"
+            >
+              <LogOut className="w-5 h-5 text-foreground" />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/auth")}
+              className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
+              title="Login"
+            >
+              <User className="w-5 h-5 text-foreground" />
+            </button>
+          )}
 
           <button
             onClick={openCart}
