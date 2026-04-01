@@ -134,6 +134,27 @@ const Header = () => {
             </AnimatePresence>
           </div>
 
+          {user ? (
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+              }}
+              className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
+              title="Sair"
+            >
+              <LogOut className="w-5 h-5 text-foreground" />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/auth")}
+              className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
+              title="Login"
+            >
+              <User className="w-5 h-5 text-foreground" />
+            </button>
+          )}
+
           <button
             onClick={openCart}
             className="relative p-2.5 hover:bg-secondary rounded-xl transition-colors"
