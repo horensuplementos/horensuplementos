@@ -8,7 +8,12 @@ import Index from "./pages/Index.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import Blog from "./pages/Blog.tsx";
 import Auth from "./pages/Auth.tsx";
+import Checkout from "./pages/Checkout.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import AdminRoute from "./components/AdminRoute.tsx";
+import Dashboard from "./pages/admin/Dashboard.tsx";
+import AdminProducts from "./pages/admin/AdminProducts.tsx";
+import AdminOrders from "./pages/admin/AdminOrders.tsx";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +29,10 @@ const App = () => (
             <Route path="/produto/:id" element={<ProductDetail />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
+            <Route path="/admin/produtos" element={<AdminRoute><AdminProducts /></AdminRoute>} />
+            <Route path="/admin/pedidos" element={<AdminRoute><AdminOrders /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
