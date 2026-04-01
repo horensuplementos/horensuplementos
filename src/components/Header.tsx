@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { ShoppingBag, Menu, X, Search, User, LogOut } from "lucide-react";
+import { ShoppingBag, Menu, X, Search, User, LogOut, Shield } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/horen-logo.png";
-import { products } from "@/data/products";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -11,17 +10,24 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 const Header = () => {
   const { totalItems, openCart } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
+    const checkAdmin = async (uid: string) => {
+      const { data } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
+      setIsAdmin(!!data);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) checkAdmin(session.user.id);
+      else setIsAdmin(false);
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) checkAdmin(session.user.id);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -49,13 +55,6 @@ const Header = () => {
     { label: "Contato", href: "/#contato" },
   ];
 
-  const filteredProducts = searchQuery.length > 1
-    ? products.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
-
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
       <div className="container mx-auto px-6 h-20 flex items-center justify-between gap-4">
@@ -76,69 +75,22 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-2">
-          <div className="relative">
+          {isAdmin && (
             <button
-              onClick={() => setSearchOpen(!searchOpen)}
+              onClick={() => navigate("/admin")}
               className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
+              title="Painel Admin"
             >
-              <Search className="w-5 h-5 text-foreground" />
+              <Shield className="w-5 h-5 text-primary" />
             </button>
-
-            <AnimatePresence>
-              {searchOpen && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 280 }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
-                >
-                  <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                    <Search className="w-4 h-4 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Buscar produtos..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      autoFocus
-                      className="flex-1 bg-transparent text-sm font-body text-foreground placeholder:text-muted-foreground outline-none"
-                    />
-                  </div>
-                  {filteredProducts.length > 0 && (
-                    <div className="max-h-60 overflow-y-auto">
-                      {filteredProducts.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => {
-                            navigate(`/produto/${p.id}`);
-                            setSearchOpen(false);
-                            setSearchQuery("");
-                          }}
-                          className="w-full text-left px-4 py-3 hover:bg-secondary transition-colors flex justify-between items-center"
-                        >
-                          <div>
-                            <p className="text-sm font-heading font-semibold text-foreground">{p.name}</p>
-                            <p className="text-xs text-muted-foreground">{p.category}</p>
-                          </div>
-                          <span className="text-sm font-heading font-bold text-primary">
-                            {p.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {searchQuery.length > 1 && filteredProducts.length === 0 && (
-                    <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum produto encontrado</p>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          )}
 
           {user ? (
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
                 setUser(null);
+                setIsAdmin(false);
               }}
               className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
               title="Sair"

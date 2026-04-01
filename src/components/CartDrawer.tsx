@@ -2,9 +2,11 @@ import { useCart } from "@/contexts/CartContext";
 import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 const CartDrawer = () => {
   const { items, isOpen, closeCart, removeItem, updateQuantity, totalPrice, totalItems } = useCart();
+  const navigate = useNavigate();
 
   const formatPrice = (price: number) =>
     price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -53,13 +55,22 @@ const CartDrawer = () => {
                       key={item.product.id}
                       className="flex gap-4 p-4 bg-muted/50 rounded-lg"
                     >
+                      {item.product.image_url && (
+                        <img
+                          src={item.product.image_url}
+                          alt={item.product.name}
+                          className="w-16 h-16 rounded-lg object-cover"
+                        />
+                      )}
                       <div className="flex-1">
                         <h3 className="font-heading font-semibold text-sm text-foreground">
                           {item.product.name}
                         </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {item.product.weight}
-                        </p>
+                        {item.product.weight && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {item.product.weight}
+                          </p>
+                        )}
                         <p className="font-heading font-bold text-foreground mt-2">
                           {formatPrice(item.product.price)}
                         </p>
@@ -101,7 +112,13 @@ const CartDrawer = () => {
                     {formatPrice(totalPrice)}
                   </span>
                 </div>
-                <Button className="w-full h-14 rounded-xl font-heading text-base font-semibold">
+                <Button
+                  onClick={() => {
+                    closeCart();
+                    navigate("/checkout");
+                  }}
+                  className="w-full h-14 rounded-xl font-heading text-base font-semibold"
+                >
                   Finalizar Compra
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
