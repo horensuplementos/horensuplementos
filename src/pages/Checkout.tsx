@@ -90,6 +90,29 @@ const Checkout = () => {
     loadUser();
   }, [navigate, toast]);
 
+  const fetchAddressByCep = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length !== 8) return;
+
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await res.json();
+      if (data.erro) {
+        toast({ title: "CEP não encontrado", variant: "destructive" });
+        return;
+      }
+      setAddress((prev) => ({
+        ...prev,
+        street: data.logradouro || prev.street,
+        neighborhood: data.bairro || prev.neighborhood,
+        city: data.localidade || prev.city,
+        state: data.uf || prev.state,
+      }));
+    } catch {
+      // silently fail
+    }
+  };
+
   const calculateShipping = async () => {
     const cleanZip = address.zip_code.replace(/\D/g, "");
     if (cleanZip.length !== 8) {
