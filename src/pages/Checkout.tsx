@@ -285,7 +285,13 @@ const Checkout = () => {
                     <input
                       className={inputClass}
                       value={address.zip_code}
-                      onChange={(e) => setAddress({ ...address, zip_code: formatCEP(e.target.value) })}
+                      onChange={(e) => {
+                        const formatted = formatCEP(e.target.value);
+                        setAddress({ ...address, zip_code: formatted });
+                        if (formatted.replace(/\D/g, "").length === 8) {
+                          fetchAddressByCep(formatted);
+                        }
+                      }}
                       placeholder="00000-000"
                       required
                     />
