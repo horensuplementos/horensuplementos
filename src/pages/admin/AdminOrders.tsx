@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/AdminLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronUp, Package } from "lucide-react";
+import { ChevronDown, ChevronUp, Package, Truck, Loader2, Copy } from "lucide-react";
 
 const statusOptions = ["pendente", "pago", "enviado", "entregue", "cancelado"];
 const statusColors: Record<string, string> = {
@@ -19,6 +19,7 @@ const AdminOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<Record<string, any[]>>({});
+  const [shippingLoading, setShippingLoading] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchOrders = async () => {
@@ -31,14 +32,12 @@ const AdminOrders = () => {
 
   useEffect(() => {
     fetchOrders();
-
     const channel = supabase
       .channel("admin-orders-list")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
         fetchOrders();
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, []);
 
@@ -60,12 +59,128 @@ const AdminOrders = () => {
   const updateStatus = async (orderId: string, newStatus: string) => {
     const { error } = await supabase
       .from("orders")
-      .update({ status: newStatus })
+      .update({ status: newStatus } as any)
       .eq("id", orderId);
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } else {
       toast({ title: `Status atualizado para "${newStatus}"` });
+    }
+  };
+
+  const generateLabel = async (order: any) => {
+    if (!order.shipping_service_id) {
+      toast({ title: "Sem dados de frete", description: "Este pedido não tem frete selecionado.", variant: "destructive" });
+      return;
+    }
+
+    setShippingLoading(order.id);
+    try {
+      // Parse address
+      const addressParts = (order.customer_address || "").split(",").map((s: string) => s.trim());
+      const street = addressParts[0] || "Rua";
+      const numberMatch = (addressParts[1] || "").match(/(\d+)/);
+      const number = numberMatch?.[1] || "S/N";
+      const neighborhoodMatch = (addressParts[1] || "").split("-").map((s: string) => s.trim());
+      const neighborhood = neighborhoodMatch[1] || "Centro";
+      const cityState = (addressParts[2] || "").split("-").map((s: string) => s.trim());
+      const city = cityState[0] || "São Paulo";
+      const state = cityState[1] || "SP";
+      const cepMatch = (order.customer_address || "").match(/CEP:\s*([\d-]+)/);
+      const postalCode = cepMatch?.[1]?.replace(/\D/g, "") || "00000000";
+
+      const items = orderItems[order.id] || [];
+      const products = items.map((item: any) => ({
+        name: item.product_name,
+        quantity: item.quantity,
+        unitary_value: Number(item.unit_price),
+      }));
+
+      // Step 1: Add to cart
+      const { data: cartData, error: cartError } = await supabase.functions.invoke("shipping-label", {
+        body: {
+          action: "add_to_cart",
+          shipment: {
+            service: order.shipping_service_id,
+            from: {
+              name: "Horen Suplementos",
+              email: "contato@horen.com.br",
+              postal_code: "02613000",
+              address: "Rua Exemplo",
+              number: "100",
+              neighborhood: "Centro",
+              city: "São Paulo",
+              state_abbr: "SP",
+            },
+            to: {
+              name: order.customer_name,
+              email: order.customer_email,
+              phone: order.customer_phone || undefined,
+              postal_code: postalCode,
+              address: street,
+              number,
+              neighborhood,
+              city,
+              state_abbr: state,
+            },
+            products,
+            volumes: [{
+              height: 10,
+              width: 20,
+              length: 30,
+              weight: 0.5,
+            }],
+          },
+        },
+      });
+
+      if (cartError) throw cartError;
+      
+      const meOrderId = cartData?.data?.id;
+      if (!meOrderId) {
+        console.error("Cart response:", cartData);
+        toast({ title: "Erro", description: "Não foi possível criar o envio no Melhor Envio.", variant: "destructive" });
+        return;
+      }
+
+      // Save shipping order ID
+      await supabase.from("orders").update({ 
+        shipping_order_id: meOrderId,
+        shipping_status: "no_carrinho",
+      } as any).eq("id", order.id);
+
+      // Step 2: Generate label
+      const { data: genData, error: genError } = await supabase.functions.invoke("shipping-label", {
+        body: { action: "generate", order_ids: [meOrderId] },
+      });
+      if (genError) throw genError;
+
+      // Step 3: Checkout (purchase label)
+      const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke("shipping-label", {
+        body: { action: "checkout", order_ids: [meOrderId] },
+      });
+      if (checkoutError) throw checkoutError;
+
+      // Extract tracking code
+      const purchaseData = checkoutData?.data?.purchase || checkoutData?.data;
+      let trackingCode = "";
+      if (purchaseData?.orders) {
+        const orderInfo = purchaseData.orders.find((o: any) => o.id === meOrderId);
+        trackingCode = orderInfo?.tracking || "";
+      }
+
+      await supabase.from("orders").update({
+        shipping_status: "etiqueta_gerada",
+        tracking_code: trackingCode || null,
+        status: "enviado",
+      } as any).eq("id", order.id);
+
+      toast({ title: "Etiqueta gerada com sucesso!", description: trackingCode ? `Rastreio: ${trackingCode}` : undefined });
+    } catch (err: any) {
+      console.error("Label generation error:", err);
+      toast({ title: "Erro ao gerar etiqueta", description: err.message, variant: "destructive" });
+    } finally {
+      setShippingLoading(null);
     }
   };
 
@@ -134,6 +249,35 @@ const AdminOrders = () => {
                       </div>
                     </div>
 
+                    {/* Shipping info */}
+                    {order.shipping_service_name && (
+                      <div className="bg-secondary/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                          <Truck className="w-3 h-3" /> Frete
+                        </p>
+                        <p className="text-sm text-foreground">
+                          {order.shipping_service_name} — {formatPrice(Number(order.shipping_price || 0))}
+                        </p>
+                        {order.tracking_code && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-sm font-mono text-primary">{order.tracking_code}</p>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(order.tracking_code);
+                                toast({ title: "Código copiado!" });
+                              }}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                        {order.shipping_status && (
+                          <p className="text-xs text-muted-foreground mt-1">Status: {order.shipping_status}</p>
+                        )}
+                      </div>
+                    )}
+
                     {orderItems[order.id] && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-2">Itens do Pedido</p>
@@ -171,6 +315,21 @@ const AdminOrders = () => {
                         ))}
                       </div>
                     </div>
+
+                    {/* Label generation button */}
+                    {order.status === "pago" && !order.shipping_order_id && order.shipping_service_id && (
+                      <Button
+                        onClick={() => generateLabel(order)}
+                        disabled={shippingLoading === order.id}
+                        className="w-full"
+                      >
+                        {shippingLoading === order.id ? (
+                          <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Gerando etiqueta...</>
+                        ) : (
+                          <><Truck className="w-4 h-4 mr-2" /> Gerar Etiqueta de Envio</>
+                        )}
+                      </Button>
+                    )}
 
                     {order.payment_method && (
                       <div>

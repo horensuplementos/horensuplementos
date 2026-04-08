@@ -66,8 +66,14 @@ export type Database = {
           id: string
           payment_id: string | null
           payment_method: string | null
+          shipping_order_id: string | null
+          shipping_price: number | null
+          shipping_service_id: number | null
+          shipping_service_name: string | null
+          shipping_status: string | null
           status: string
           total: number
+          tracking_code: string | null
           updated_at: string
           user_id: string | null
         }
@@ -80,8 +86,14 @@ export type Database = {
           id?: string
           payment_id?: string | null
           payment_method?: string | null
+          shipping_order_id?: string | null
+          shipping_price?: number | null
+          shipping_service_id?: number | null
+          shipping_service_name?: string | null
+          shipping_status?: string | null
           status?: string
           total: number
+          tracking_code?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -94,8 +106,14 @@ export type Database = {
           id?: string
           payment_id?: string | null
           payment_method?: string | null
+          shipping_order_id?: string | null
+          shipping_price?: number | null
+          shipping_service_id?: number | null
+          shipping_service_name?: string | null
+          shipping_status?: string | null
           status?: string
           total?: number
+          tracking_code?: string | null
           updated_at?: string
           user_id?: string | null
         }
