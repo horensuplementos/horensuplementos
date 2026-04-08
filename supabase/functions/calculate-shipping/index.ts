@@ -20,6 +20,21 @@ const BodySchema = z.object({
 const MELHOR_ENVIO_URL = 'https://melhorenvio.com.br/api/v2/me/shipment/calculate'
 const FROM_ZIP = '02613000'
 
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, options)
+      if (res.ok || res.status < 500) return res
+      console.error(`Attempt ${i + 1} failed with status ${res.status}`)
+    } catch (err) {
+      console.error(`Attempt ${i + 1} network error:`, err)
+      if (i === retries - 1) throw err
+    }
+    await new Promise(r => setTimeout(r, 1000 * (i + 1)))
+  }
+  throw new Error('Max retries reached')
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -43,7 +58,7 @@ Deno.serve(async (req) => {
 
     const { to_zip, products } = parsed.data
 
-    const response = await fetch(MELHOR_ENVIO_URL, {
+    const response = await fetchWithRetry(MELHOR_ENVIO_URL, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -62,12 +77,11 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       console.error('Melhor Envio error:', JSON.stringify(data))
-      return new Response(JSON.stringify({ error: 'Erro ao calcular frete' }), {
+      return new Response(JSON.stringify({ error: 'Erro ao calcular frete', details: data }), {
         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // Filter only available options
     const options = (Array.isArray(data) ? data : [])
       .filter((opt: any) => !opt.error)
       .map((opt: any) => ({
@@ -84,7 +98,7 @@ Deno.serve(async (req) => {
     })
   } catch (error) {
     console.error('Shipping calc error:', error)
-    return new Response(JSON.stringify({ error: 'Erro interno' }), {
+    return new Response(JSON.stringify({ error: 'Erro interno no cálculo de frete' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
