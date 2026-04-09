@@ -281,6 +281,23 @@ const Checkout = () => {
                     placeholder="(11) 99999-9999"
                   />
                 </div>
+                <div>
+                  <label className="text-sm font-body text-muted-foreground mb-1 block">CPF *</label>
+                  <input
+                    className={inputClass}
+                    value={form.cpf}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                      let formatted = digits;
+                      if (digits.length > 9) formatted = `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`;
+                      else if (digits.length > 6) formatted = `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6)}`;
+                      else if (digits.length > 3) formatted = `${digits.slice(0,3)}.${digits.slice(3)}`;
+                      setForm({ ...form, cpf: formatted });
+                    }}
+                    placeholder="000.000.000-00"
+                    required
+                  />
+                </div>
               </div>
 
               {/* Endereço */}
