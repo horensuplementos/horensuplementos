@@ -38,6 +38,7 @@ const Checkout = () => {
     name: "",
     email: "",
     phone: "",
+    cpf: "",
   });
   const [address, setAddress] = useState<AddressForm>({
     street: "",
@@ -76,6 +77,7 @@ const Checkout = () => {
           ...prev,
           name: (profile as any).name || "",
           phone: (profile as any).phone || "",
+          cpf: (profile as any).cpf || "",
         }));
         setAddress({
           street: (profile as any).street || "",
@@ -172,6 +174,7 @@ const Checkout = () => {
           customer_email: form.email,
           customer_phone: form.phone || null,
           customer_address: fullAddress,
+          customer_cpf: form.cpf || null,
           status: "pendente",
           shipping_service_id: selectedShipping.id,
           shipping_service_name: `${selectedShipping.company} - ${selectedShipping.name}`,
@@ -198,6 +201,7 @@ const Checkout = () => {
         .update({
           name: form.name,
           phone: form.phone,
+          cpf: form.cpf,
           street: address.street,
           number: address.number,
           neighborhood: address.neighborhood,
@@ -275,6 +279,23 @@ const Checkout = () => {
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     placeholder="(11) 99999-9999"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-body text-muted-foreground mb-1 block">CPF *</label>
+                  <input
+                    className={inputClass}
+                    value={form.cpf}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                      let formatted = digits;
+                      if (digits.length > 9) formatted = `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`;
+                      else if (digits.length > 6) formatted = `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6)}`;
+                      else if (digits.length > 3) formatted = `${digits.slice(0,3)}.${digits.slice(3)}`;
+                      setForm({ ...form, cpf: formatted });
+                    }}
+                    placeholder="000.000.000-00"
+                    required
                   />
                 </div>
               </div>
