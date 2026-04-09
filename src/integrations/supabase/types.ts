@@ -62,6 +62,7 @@ export type Database = {
           bling_order_id: string | null
           created_at: string
           customer_address: string | null
+          customer_cpf: string | null
           customer_email: string
           customer_name: string
           customer_phone: string | null
@@ -86,6 +87,7 @@ export type Database = {
           bling_order_id?: string | null
           created_at?: string
           customer_address?: string | null
+          customer_cpf?: string | null
           customer_email: string
           customer_name: string
           customer_phone?: string | null
@@ -110,6 +112,7 @@ export type Database = {
           bling_order_id?: string | null
           created_at?: string
           customer_address?: string | null
+          customer_cpf?: string | null
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
@@ -177,6 +180,7 @@ export type Database = {
         Row: {
           address: string | null
           city: string | null
+          cpf: string | null
           created_at: string
           id: string
           name: string | null
@@ -192,6 +196,7 @@ export type Database = {
         Insert: {
           address?: string | null
           city?: string | null
+          cpf?: string | null
           created_at?: string
           id?: string
           name?: string | null
@@ -207,6 +212,7 @@ export type Database = {
         Update: {
           address?: string | null
           city?: string | null
+          cpf?: string | null
           created_at?: string
           id?: string
           name?: string | null
