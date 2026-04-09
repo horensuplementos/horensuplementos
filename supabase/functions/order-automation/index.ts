@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
               name: order.customer_name,
               email: order.customer_email,
               phone: order.customer_phone || undefined,
+              document: order.customer_cpf || undefined,
               postal_code: addr.postalCode,
               address: addr.street,
               number: addr.number,
