@@ -58,12 +58,16 @@ export type Database = {
       }
       orders: {
         Row: {
+          automation_log: Json | null
+          bling_order_id: string | null
           created_at: string
           customer_address: string | null
           customer_email: string
           customer_name: string
           customer_phone: string | null
           id: string
+          invoice_key: string | null
+          invoice_number: string | null
           payment_id: string | null
           payment_method: string | null
           shipping_order_id: string | null
@@ -78,12 +82,16 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          automation_log?: Json | null
+          bling_order_id?: string | null
           created_at?: string
           customer_address?: string | null
           customer_email: string
           customer_name: string
           customer_phone?: string | null
           id?: string
+          invoice_key?: string | null
+          invoice_number?: string | null
           payment_id?: string | null
           payment_method?: string | null
           shipping_order_id?: string | null
@@ -98,12 +106,16 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          automation_log?: Json | null
+          bling_order_id?: string | null
           created_at?: string
           customer_address?: string | null
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
           id?: string
+          invoice_key?: string | null
+          invoice_number?: string | null
           payment_id?: string | null
           payment_method?: string | null
           shipping_order_id?: string | null
