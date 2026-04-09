@@ -174,6 +174,7 @@ const Checkout = () => {
           customer_email: form.email,
           customer_phone: form.phone || null,
           customer_address: fullAddress,
+          customer_cpf: form.cpf || null,
           status: "pendente",
           shipping_service_id: selectedShipping.id,
           shipping_service_name: `${selectedShipping.company} - ${selectedShipping.name}`,
@@ -200,6 +201,7 @@ const Checkout = () => {
         .update({
           name: form.name,
           phone: form.phone,
+          cpf: form.cpf,
           street: address.street,
           number: address.number,
           neighborhood: address.neighborhood,
