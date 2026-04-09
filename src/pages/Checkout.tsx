@@ -38,6 +38,7 @@ const Checkout = () => {
     name: "",
     email: "",
     phone: "",
+    cpf: "",
   });
   const [address, setAddress] = useState<AddressForm>({
     street: "",
@@ -76,6 +77,7 @@ const Checkout = () => {
           ...prev,
           name: (profile as any).name || "",
           phone: (profile as any).phone || "",
+          cpf: (profile as any).cpf || "",
         }));
         setAddress({
           street: (profile as any).street || "",
