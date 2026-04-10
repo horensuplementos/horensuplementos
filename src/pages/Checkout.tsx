@@ -174,7 +174,7 @@ const Checkout = () => {
           customer_email: form.email,
           customer_phone: form.phone || null,
           customer_address: fullAddress,
-          customer_cpf: form.cpf || null,
+          customer_cpf: form.cpf.replace(/\D/g, "") || null,
           status: "pendente",
           shipping_service_id: selectedShipping.id,
           shipping_service_name: `${selectedShipping.company} - ${selectedShipping.name}`,
