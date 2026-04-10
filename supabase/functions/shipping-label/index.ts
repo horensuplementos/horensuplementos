@@ -61,17 +61,21 @@ function getHeaders(token: string) {
 }
 
 async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+  let lastRes: Response | null = null
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fetch(url, options)
       if (res.ok || res.status < 500) return res
-      console.error(`Attempt ${i + 1} failed: ${res.status}`)
+      const body = await res.text()
+      console.error(`Attempt ${i + 1} failed: ${res.status} - ${body}`)
+      lastRes = new Response(body, { status: res.status, headers: res.headers })
     } catch (err) {
       console.error(`Attempt ${i + 1} error:`, err)
       if (i === retries - 1) throw err
     }
     await new Promise(r => setTimeout(r, 1000 * (i + 1)))
   }
+  if (lastRes) return lastRes
   throw new Error('Max retries reached')
 }
 

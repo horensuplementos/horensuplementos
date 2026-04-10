@@ -116,7 +116,7 @@ const AdminOrders = () => {
               name: order.customer_name,
               email: order.customer_email,
               phone: order.customer_phone || undefined,
-              document: order.customer_cpf || undefined,
+              document: (order.customer_cpf || "").replace(/\D/g, "") || undefined,
               postal_code: postalCode,
               address: street,
               number,
