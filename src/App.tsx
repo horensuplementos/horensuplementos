@@ -9,6 +9,7 @@ import ProductDetail from "./pages/ProductDetail.tsx";
 import Blog from "./pages/Blog.tsx";
 import Auth from "./pages/Auth.tsx";
 import Checkout from "./pages/Checkout.tsx";
+import CheckoutStatus from "./pages/CheckoutStatus.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import AdminRoute from "./components/AdminRoute.tsx";
 import Dashboard from "./pages/admin/Dashboard.tsx";
