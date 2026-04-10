@@ -211,9 +211,29 @@ const Checkout = () => {
         } as any)
         .eq("user_id", user.id);
 
+      // Create Mercado Pago payment and redirect
+      toast({ title: "Redirecionando para pagamento..." });
+
+      const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
+        "create-payment",
+        { body: { order_id: order.id } }
+      );
+
+      if (paymentError || !paymentData?.init_point) {
+        console.error("Payment error:", paymentError, paymentData);
+        toast({
+          title: "Erro ao gerar pagamento",
+          description: "O pedido foi criado mas houve um erro ao gerar o link de pagamento. Tente novamente na página do pedido.",
+          variant: "destructive",
+        });
+        clearCart();
+        navigate(`/checkout/pendente?order_id=${order.id}`);
+        return;
+      }
+
       clearCart();
-      toast({ title: "Pedido realizado com sucesso!" });
-      navigate("/");
+      // Redirect to Mercado Pago checkout
+      window.location.href = paymentData.init_point;
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
