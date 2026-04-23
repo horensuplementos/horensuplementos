@@ -33,16 +33,13 @@ export const useAdmin = () => {
         return;
       }
 
-      const { data: legacyRole } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id)
-        .eq("role", "admin")
-        .maybeSingle();
+      const { data: hasLegacyAdminRole } = await supabase.rpc("has_role", {
+        _user_id: session.user.id,
+        _role: "admin",
+      });
 
-      const hasLegacyAdminRole = legacyRole?.role === "admin";
       setPermissionLevel(hasLegacyAdminRole ? "admin" : null);
-      setIsAdmin(hasLegacyAdminRole);
+      setIsAdmin(!!hasLegacyAdminRole);
       setLoading(false);
     };
 
