@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ArrowLeft, ShoppingBag, Loader2, Truck } from "lucide-react";
 import Header from "@/components/Header";
 import CartDrawer from "@/components/CartDrawer";
@@ -24,6 +25,17 @@ interface AddressForm {
   city: string;
   state: string;
   zip_code: string;
+}
+
+interface CouponValidationResult {
+  valid: boolean;
+  message?: string;
+  coupon_id?: string;
+  code?: string;
+  description?: string;
+  discount_amount?: number;
+  discount_type?: "fixed" | "percentage";
+  discount_value?: number;
 }
 
 const BRAZILIAN_STATES = [
@@ -52,8 +64,23 @@ const Checkout = () => {
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
   const [loadingShipping, setLoadingShipping] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    coupon_id: string;
+    code: string;
+    description?: string;
+    discount_amount: number;
+    discount_type: "fixed" | "percentage";
+    discount_value: number;
+  } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const subtotal = totalPrice;
+  const shippingTotal = selectedShipping?.price || 0;
+  const discountAmount = appliedCoupon?.discount_amount || 0;
+  const finalTotal = Math.max(subtotal + shippingTotal - discountAmount, 0);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -157,6 +184,49 @@ const Checkout = () => {
     }
   };
 
+  const validateCoupon = async () => {
+    const normalizedCode = couponCode.trim().toUpperCase();
+    if (!normalizedCode) {
+      toast({ title: "Informe um cupom", variant: "destructive" });
+      return;
+    }
+
+    setCouponLoading(true);
+    const { data, error } = await supabase.rpc("validate_coupon", {
+      p_code: normalizedCode,
+      p_subtotal: subtotal,
+    });
+    const couponResult = data as unknown as CouponValidationResult | null;
+    setCouponLoading(false);
+
+    if (error) {
+      toast({ title: "Erro ao validar cupom", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    if (!couponResult?.valid) {
+      setAppliedCoupon(null);
+      toast({ title: "Cupom inválido", description: couponResult?.message || "Não foi possível aplicar o cupom.", variant: "destructive" });
+      return;
+    }
+
+    setAppliedCoupon({
+      coupon_id: couponResult.coupon_id || "",
+      code: couponResult.code || normalizedCode,
+      description: couponResult.description || undefined,
+      discount_amount: Number(couponResult.discount_amount || 0),
+      discount_type: couponResult.discount_type || "fixed",
+      discount_value: Number(couponResult.discount_value || 0),
+    });
+    setCouponCode(couponResult.code || normalizedCode);
+    toast({ title: "Cupom aplicado!", description: `Desconto de ${formatPrice(Number(couponResult.discount_amount || 0))}` });
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0 || !selectedShipping) return;
@@ -169,7 +239,11 @@ const Checkout = () => {
         .from("orders")
         .insert({
           user_id: user.id,
-          total: totalPrice + selectedShipping.price,
+          subtotal_amount: subtotal,
+          discount_amount: discountAmount,
+          coupon_id: appliedCoupon?.coupon_id || null,
+          coupon_code: appliedCoupon?.code || null,
+          total: finalTotal,
           customer_name: form.name,
           customer_email: form.email,
           customer_phone: form.phone || null,
@@ -219,7 +293,9 @@ const Checkout = () => {
         { body: { order_id: order.id } }
       );
 
-      if (paymentError || !paymentData?.init_point) {
+      const paymentUrl = paymentData?.init_point || paymentData?.sandbox_init_point;
+
+      if (paymentError || !paymentUrl) {
         console.error("Payment error:", paymentError, paymentData);
         toast({
           title: "Erro ao gerar pagamento",
@@ -233,7 +309,7 @@ const Checkout = () => {
 
       clearCart();
       // Redirect to Mercado Pago checkout
-      window.location.href = paymentData.init_point;
+      window.location.href = paymentUrl;
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
@@ -456,6 +532,32 @@ const Checkout = () => {
               <div className="bg-card border border-border rounded-2xl p-6">
                 <h2 className="font-heading text-lg font-semibold text-foreground mb-4">Resumo do Pedido</h2>
                 <div className="space-y-3">
+                  <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3">
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="Cupom de desconto"
+                        className="h-11"
+                      />
+                      <Button type="button" variant="outline" className="h-11 md:min-w-36" onClick={validateCoupon} disabled={couponLoading}>
+                        {couponLoading ? "Validando..." : "Aplicar cupom"}
+                      </Button>
+                    </div>
+                    {appliedCoupon && (
+                      <div className="flex items-center justify-between gap-4 rounded-lg bg-background px-4 py-3 border border-border">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{appliedCoupon.code} aplicado</p>
+                          <p className="text-xs text-muted-foreground">
+                            {appliedCoupon.description || (appliedCoupon.discount_type === "percentage"
+                              ? `${appliedCoupon.discount_value}% de desconto`
+                              : `${formatPrice(appliedCoupon.discount_value)} de desconto`)}
+                          </p>
+                        </div>
+                        <Button type="button" variant="ghost" onClick={removeCoupon}>Remover</Button>
+                      </div>
+                    )}
+                  </div>
                   {items.map((item) => (
                     <div key={item.product.id} className="flex justify-between text-sm">
                       <span className="text-foreground">
@@ -474,10 +576,16 @@ const Checkout = () => {
                       </span>
                     </div>
                   )}
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Desconto ({appliedCoupon.code})</span>
+                      <span className="font-semibold text-primary">- {formatPrice(discountAmount)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-border pt-3 flex justify-between">
                     <span className="font-heading font-bold text-foreground">Total</span>
                     <span className="font-heading text-xl font-bold text-primary">
-                      {formatPrice(totalPrice + (selectedShipping?.price || 0))}
+                      {formatPrice(finalTotal)}
                     </span>
                   </div>
                 </div>
