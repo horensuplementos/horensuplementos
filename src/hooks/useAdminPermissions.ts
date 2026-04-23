@@ -24,8 +24,20 @@ export const useAdminPermissions = () => {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (data?.active) setPermissionLevel(data.permission_level as AdminPermissionLevel);
-      else setPermissionLevel(null);
+      if (data?.active) {
+        setPermissionLevel(data.permission_level as AdminPermissionLevel);
+        setLoading(false);
+        return;
+      }
+
+      const { data: legacyRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      setPermissionLevel(legacyRole?.role === "admin" ? "admin" : null);
       setLoading(false);
     };
 
