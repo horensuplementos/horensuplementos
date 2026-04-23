@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, LogOut, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, LogOut, ChevronLeft, TicketPercent } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Cupons", href: "/admin/cupons", icon: TicketPercent },
   { label: "Produtos", href: "/admin/produtos", icon: Package },
   { label: "Pedidos", href: "/admin/pedidos", icon: ShoppingCart },
 ];

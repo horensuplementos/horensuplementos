@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      coupons: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: Database["public"]["Enums"]["coupon_discount_type"]
+          discount_value: number
+          expires_at: string | null
+          id: string
+          minimum_order_amount: number
+          starts_at: string | null
+          updated_at: string
+          usage_limit: number | null
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_type: Database["public"]["Enums"]["coupon_discount_type"]
+          discount_value: number
+          expires_at?: string | null
+          id?: string
+          minimum_order_amount?: number
+          starts_at?: string | null
+          updated_at?: string
+          usage_limit?: number | null
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_type?: Database["public"]["Enums"]["coupon_discount_type"]
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          minimum_order_amount?: number
+          starts_at?: string | null
+          updated_at?: string
+          usage_limit?: number | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           id: string
@@ -60,12 +105,15 @@ export type Database = {
         Row: {
           automation_log: Json | null
           bling_order_id: string | null
+          coupon_code: string | null
+          coupon_id: string | null
           created_at: string
           customer_address: string | null
           customer_cpf: string | null
           customer_email: string
           customer_name: string
           customer_phone: string | null
+          discount_amount: number
           id: string
           invoice_key: string | null
           invoice_number: string | null
@@ -77,6 +125,7 @@ export type Database = {
           shipping_service_name: string | null
           shipping_status: string | null
           status: string
+          subtotal_amount: number
           total: number
           tracking_code: string | null
           updated_at: string
@@ -85,12 +134,15 @@ export type Database = {
         Insert: {
           automation_log?: Json | null
           bling_order_id?: string | null
+          coupon_code?: string | null
+          coupon_id?: string | null
           created_at?: string
           customer_address?: string | null
           customer_cpf?: string | null
           customer_email: string
           customer_name: string
           customer_phone?: string | null
+          discount_amount?: number
           id?: string
           invoice_key?: string | null
           invoice_number?: string | null
@@ -102,6 +154,7 @@ export type Database = {
           shipping_service_name?: string | null
           shipping_status?: string | null
           status?: string
+          subtotal_amount?: number
           total: number
           tracking_code?: string | null
           updated_at?: string
@@ -110,12 +163,15 @@ export type Database = {
         Update: {
           automation_log?: Json | null
           bling_order_id?: string | null
+          coupon_code?: string | null
+          coupon_id?: string | null
           created_at?: string
           customer_address?: string | null
           customer_cpf?: string | null
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
+          discount_amount?: number
           id?: string
           invoice_key?: string | null
           invoice_number?: string | null
@@ -127,12 +183,28 @@ export type Database = {
           shipping_service_name?: string | null
           shipping_status?: string | null
           status?: string
+          subtotal_amount?: number
           total?: number
           tracking_code?: string | null
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupon_usage_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -247,9 +319,35 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      coupon_usage_summary: {
+        Row: {
+          active: boolean | null
+          code: string | null
+          description: string | null
+          discount_type:
+            | Database["public"]["Enums"]["coupon_discount_type"]
+            | null
+          discount_value: number | null
+          expires_at: string | null
+          id: string | null
+          last_used_at: string | null
+          starts_at: string | null
+          total_discount_generated: number | null
+          total_uses: number | null
+          usage_limit: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      calculate_coupon_discount: {
+        Args: {
+          p_discount_type: Database["public"]["Enums"]["coupon_discount_type"]
+          p_discount_value: number
+          p_subtotal: number
+        }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -257,9 +355,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      normalize_coupon_code: { Args: { p_code: string }; Returns: string }
+      validate_coupon: {
+        Args: { p_code: string; p_subtotal: number }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "user"
+      coupon_discount_type: "fixed" | "percentage"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -388,6 +492,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      coupon_discount_type: ["fixed", "percentage"],
     },
   },
 } as const
