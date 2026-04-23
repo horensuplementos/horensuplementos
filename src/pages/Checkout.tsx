@@ -240,6 +240,26 @@ const Checkout = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0 || !selectedShipping) return;
+
+    const normalizedName = form.name.replace(/\s+/g, " ").trim();
+    const normalizedEmail = form.email.trim();
+    const normalizedCpf = form.cpf.replace(/\D/g, "");
+
+    if (normalizedName.split(" ").length < 2) {
+      toast({ title: "Informe nome e sobrenome", variant: "destructive" });
+      return;
+    }
+
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      toast({ title: "Informe um e-mail válido", variant: "destructive" });
+      return;
+    }
+
+    if (normalizedCpf.length !== 11) {
+      toast({ title: "Informe um CPF válido", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
 
     const fullAddress = `${address.street}, ${address.number} - ${address.neighborhood}, ${address.city} - ${address.state}, CEP: ${address.zip_code}`;
@@ -254,11 +274,11 @@ const Checkout = () => {
           coupon_id: appliedCoupon?.coupon_id || null,
           coupon_code: appliedCoupon?.code || null,
           total: finalTotal,
-          customer_name: form.name,
-          customer_email: form.email,
+          customer_name: normalizedName,
+          customer_email: normalizedEmail,
           customer_phone: form.phone || null,
           customer_address: fullAddress,
-          customer_cpf: form.cpf.replace(/\D/g, "") || null,
+          customer_cpf: normalizedCpf || null,
           status: "pendente",
           shipping_service_id: selectedShipping.id,
           shipping_service_name: `${selectedShipping.company} - ${selectedShipping.name}`,
@@ -303,7 +323,7 @@ const Checkout = () => {
         { body: { order_id: order.id } }
       );
 
-      const paymentUrl = paymentData?.init_point || paymentData?.sandbox_init_point;
+      const paymentUrl = paymentData?.checkout_url || paymentData?.init_point || paymentData?.sandbox_init_point;
 
       if (paymentError || !paymentUrl) {
         console.error("Payment error:", paymentError, paymentData);
