@@ -111,12 +111,14 @@ Deno.serve(async (req) => {
       .eq('order_id', order_id)
 
     // Build MP preference
-    const mpItems = (items || []).map((item: any) => ({
-      title: item.product_name,
-      quantity: item.quantity,
-      unit_price: Number(item.unit_price),
-      currency_id: 'BRL',
-    }))
+    const mpItems = (items || [])
+      .map((item: any) => ({
+        title: String(item.product_name || '').trim(),
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+        currency_id: 'BRL',
+      }))
+      .filter((item: any) => item.title && item.quantity > 0 && Number.isFinite(item.unit_price) && item.unit_price > 0)
 
     // Add shipping as item if present
     if (order.shipping_price && Number(order.shipping_price) > 0) {
@@ -138,6 +140,7 @@ Deno.serve(async (req) => {
       items: mpItems,
       external_reference: order_id,
       payer: {
+        name: payerName,
         first_name,
         last_name,
         email: payerEmail.data,
@@ -151,10 +154,8 @@ Deno.serve(async (req) => {
       },
       auto_return: 'approved',
       payment_methods: {
-        default_payment_method_id: 'pix',
         excluded_payment_methods: [],
         excluded_payment_types: [],
-        installments: 12,
       },
       notification_url: `${supabaseUrl}/functions/v1/payment-webhook`,
       statement_descriptor: 'HOREN SUPLEMENTOS',
