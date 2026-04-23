@@ -26,6 +26,7 @@ type CouponSummary = {
   description: string | null;
   discount_type: "fixed" | "percentage";
   discount_value: number;
+  minimum_order_amount: number;
   active: boolean;
   usage_limit: number | null;
   starts_at: string | null;
