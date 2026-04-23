@@ -222,13 +222,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "order_items_order_id_fkey_real"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "order_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -553,6 +546,13 @@ export type Database = {
           p_subtotal: number
         }
         Returns: number
+      }
+      has_admin_permission_level: {
+        Args: {
+          _levels: Database["public"]["Enums"]["admin_permission_level"][]
+          _user_id: string
+        }
+        Returns: boolean
       }
       has_role: {
         Args: {
