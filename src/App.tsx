@@ -35,10 +35,12 @@ const App = () => (
             <Route path="/checkout/sucesso" element={<CheckoutStatus type="sucesso" />} />
             <Route path="/checkout/falha" element={<CheckoutStatus type="falha" />} />
             <Route path="/checkout/pendente" element={<CheckoutStatus type="pendente" />} />
-            <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
-            <Route path="/admin/cupons" element={<AdminRoute><AdminCoupons /></AdminRoute>} />
-            <Route path="/admin/produtos" element={<AdminRoute><AdminProducts /></AdminRoute>} />
-            <Route path="/admin/pedidos" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<Dashboard />} />
+              <Route path="/admin/cupons" element={<AdminCoupons />} />
+              <Route path="/admin/produtos" element={<AdminProducts />} />
+              <Route path="/admin/pedidos" element={<AdminOrders />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
