@@ -23,6 +23,19 @@ const splitFullName = (value: string) => {
   }
 }
 
+const normalizePhone = (value: string | null | undefined) => {
+  const digits = String(value || '').replace(/\D/g, '')
+
+  if (digits.length === 10 || digits.length === 11) {
+    return {
+      area_code: digits.slice(0, 2),
+      number: digits.slice(2),
+    }
+  }
+
+  return undefined
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -75,7 +88,7 @@ Deno.serve(async (req) => {
     const payerName = normalizeFullName(order.customer_name)
     const payerEmail = EmailSchema.safeParse(order.customer_email)
     const payerCpf = String(order.customer_cpf || '').replace(/\D/g, '')
-    const payerPhone = String(order.customer_phone || '').replace(/\D/g, '')
+    const payerPhone = normalizePhone(order.customer_phone)
 
     if (!payerName || payerName.split(' ').length < 2) {
       return json({ error: 'Nome completo do pagador é obrigatório' }, 400)
@@ -117,15 +130,18 @@ Deno.serve(async (req) => {
 
     const siteUrl = req.headers.get('origin') || 'https://horensuplementos.lovable.app'
 
+    if (mpItems.length === 0) {
+      return json({ error: 'Pedido sem itens para pagamento' }, 400)
+    }
+
     const preference = {
       items: mpItems,
       external_reference: order_id,
       payer: {
-        name: payerName,
         first_name,
         last_name,
         email: payerEmail.data,
-        phone: payerPhone ? { number: payerPhone } : undefined,
+        phone: payerPhone,
         identification: { type: 'CPF', number: payerCpf },
       },
       back_urls: {
@@ -135,6 +151,7 @@ Deno.serve(async (req) => {
       },
       auto_return: 'approved',
       payment_methods: {
+        default_payment_method_id: 'pix',
         excluded_payment_methods: [],
         excluded_payment_types: [],
         installments: 12,
