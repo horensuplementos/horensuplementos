@@ -16,6 +16,10 @@ import Dashboard from "./pages/admin/Dashboard.tsx";
 import AdminCoupons from "./pages/admin/AdminCoupons.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminOrders from "./pages/admin/AdminOrders.tsx";
+import AdminContentEditor from "./pages/admin/AdminContentEditor.tsx";
+import AdminManagers from "./pages/admin/AdminManagers.tsx";
+import AdminMetrics from "./pages/admin/AdminMetrics.tsx";
+import { SiteContentProvider } from "./contexts/SiteContentContext";
 
 const queryClient = new QueryClient();
 
@@ -23,27 +27,32 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <CartProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/produto/:id" element={<ProductDetail />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/checkout/sucesso" element={<CheckoutStatus type="sucesso" />} />
-            <Route path="/checkout/falha" element={<CheckoutStatus type="falha" />} />
-            <Route path="/checkout/pendente" element={<CheckoutStatus type="pendente" />} />
-            <Route element={<AdminRoute />}>
-              <Route path="/admin" element={<Dashboard />} />
-              <Route path="/admin/cupons" element={<AdminCoupons />} />
-              <Route path="/admin/produtos" element={<AdminProducts />} />
-              <Route path="/admin/pedidos" element={<AdminOrders />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <SiteContentProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/produto/:id" element={<ProductDetail />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/checkout/sucesso" element={<CheckoutStatus type="sucesso" />} />
+              <Route path="/checkout/falha" element={<CheckoutStatus type="falha" />} />
+              <Route path="/checkout/pendente" element={<CheckoutStatus type="pendente" />} />
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<Dashboard />} />
+                <Route path="/admin/cupons" element={<AdminCoupons />} />
+                <Route path="/admin/produtos" element={<AdminProducts />} />
+                <Route path="/admin/pedidos" element={<AdminOrders />} />
+                <Route path="/admin/editor" element={<AdminContentEditor />} />
+                <Route path="/admin/administradores" element={<AdminManagers />} />
+                <Route path="/admin/metricas" element={<AdminMetrics />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </SiteContentProvider>
       </CartProvider>
     </TooltipProvider>
   </QueryClientProvider>

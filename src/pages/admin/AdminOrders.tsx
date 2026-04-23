@@ -4,7 +4,8 @@ import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronUp, Package, Truck, Loader2, Copy } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ChevronDown, ChevronUp, Package, Truck, Loader2, Copy, Trash2 } from "lucide-react";
 
 const statusOptions = ["pendente", "pago", "enviado", "entregue", "cancelado"];
 const statusColors: Record<string, string> = {
@@ -20,6 +21,8 @@ const AdminOrders = () => {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<Record<string, any[]>>({});
   const [shippingLoading, setShippingLoading] = useState<string | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<any | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const { toast } = useToast();
 
   const fetchOrders = async () => {
@@ -104,7 +107,7 @@ const AdminOrders = () => {
             service: order.shipping_service_id,
             from: {
               name: "Horen Suplementos",
-              email: "contato@horen.com.br",
+                email: "sitehorensuplementos@gmail.com",
               postal_code: "02613000",
               address: "Rua Exemplo",
               number: "100",
@@ -187,6 +190,29 @@ const AdminOrders = () => {
 
   const formatPrice = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const deleteOrder = async () => {
+    if (!orderToDelete) return;
+
+    setDeleteLoading(true);
+    const { error } = await supabase.from("orders").delete().eq("id", orderToDelete.id);
+    setDeleteLoading(false);
+
+    if (error) {
+      toast({ title: "Erro ao excluir pedido", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    setOrders((prev) => prev.filter((order) => order.id !== orderToDelete.id));
+    setExpandedOrder((current) => (current === orderToDelete.id ? null : current));
+    setOrderItems((prev) => {
+      const next = { ...prev };
+      delete next[orderToDelete.id];
+      return next;
+    });
+    toast({ title: "Pedido excluído" });
+    setOrderToDelete(null);
+  };
 
   return (
     <AdminLayout>
@@ -341,6 +367,12 @@ const AdminOrders = () => {
                         </p>
                       </div>
                     )}
+
+                    <div className="flex justify-end border-t border-border pt-4">
+                      <Button variant="destructive" onClick={() => setOrderToDelete(order)} className="gap-2">
+                        <Trash2 className="w-4 h-4" /> Excluir pedido
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -348,6 +380,30 @@ const AdminOrders = () => {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir pedido</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove o pedido de {orderToDelete?.customer_name || ""} e seus itens relacionados. Isso não pode ser desfeito.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteOrder();
+              }}
+              disabled={deleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoading ? "Excluindo..." : "Excluir agora"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
