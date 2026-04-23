@@ -11,7 +11,7 @@ type Coupon = {
   id: string;
   code: string;
   description: string | null;
-  discount_type: "fixed" | "percentage";
+  discount_type: "fixed" | "percentage" | "free_shipping";
   discount_value: number;
   minimum_order_amount: number;
   usage_limit: number | null;
@@ -24,7 +24,7 @@ type CouponSummary = {
   id: string;
   code: string;
   description: string | null;
-  discount_type: "fixed" | "percentage";
+  discount_type: "fixed" | "percentage" | "free_shipping";
   discount_value: number;
   minimum_order_amount: number;
   active: boolean;
@@ -49,7 +49,7 @@ type CouponOrder = {
 type CouponForm = {
   code: string;
   description: string;
-  discount_type: "fixed" | "percentage";
+  discount_type: "fixed" | "percentage" | "free_shipping";
   discount_value: string;
   minimum_order_amount: string;
   usage_limit: string;
@@ -167,11 +167,11 @@ const AdminCoupons = () => {
     e.preventDefault();
     setLoading(true);
 
-    const payload = {
+      const payload = {
       code: form.code.trim().toUpperCase(),
       description: form.description.trim() || null,
       discount_type: form.discount_type,
-      discount_value: Number(form.discount_value),
+        discount_value: form.discount_type === "free_shipping" ? 0 : Number(form.discount_value),
       minimum_order_amount: Number(form.minimum_order_amount || 0),
       usage_limit: form.usage_limit ? Number(form.usage_limit) : null,
       starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null,
@@ -270,14 +270,15 @@ const AdminCoupons = () => {
               </div>
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Tipo de desconto *</label>
-                <select className={inputClass} value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value as "fixed" | "percentage" })}>
+                <select className={inputClass} value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value as "fixed" | "percentage" | "free_shipping" })}>
                   <option value="percentage">Percentual</option>
                   <option value="fixed">Valor fixo</option>
+                  <option value="free_shipping">Frete grátis</option>
                 </select>
               </div>
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Valor *</label>
-                <Input type="number" step="0.01" min="0.01" className={inputClass} value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} required />
+                <Input type="number" step="0.01" min="0" className={inputClass} value={form.discount_type === "free_shipping" ? "0" : form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} required={form.discount_type !== "free_shipping"} disabled={form.discount_type === "free_shipping"} />
               </div>
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Pedido mínimo</label>
@@ -345,7 +346,11 @@ const AdminCoupons = () => {
                   <div className="rounded-lg border border-border p-4">
                     <p className="text-xs text-muted-foreground mb-1">Desconto</p>
                     <p className="font-heading font-bold text-foreground">
-                      {coupon.discount_type === "percentage" ? `${coupon.discount_value}%` : formatPrice(coupon.discount_value)}
+                        {coupon.discount_type === "percentage"
+                          ? `${coupon.discount_value}%`
+                          : coupon.discount_type === "free_shipping"
+                            ? "Frete grátis"
+                            : formatPrice(coupon.discount_value)}
                     </p>
                   </div>
                   <div className="rounded-lg border border-border p-4">
