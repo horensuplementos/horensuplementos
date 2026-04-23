@@ -1,7 +1,7 @@
 import { useAdmin } from "@/hooks/useAdmin";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 
-const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+const AdminRoute = () => {
   const { isAdmin, loading, userId } = useAdmin();
   const location = useLocation();
 
@@ -21,7 +21,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace state={{ redirectTo: location.pathname }} />;
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 };
 
 export default AdminRoute;
