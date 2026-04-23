@@ -34,8 +34,9 @@ interface CouponValidationResult {
   code?: string;
   description?: string;
   discount_amount?: number;
-  discount_type?: "fixed" | "percentage";
+  discount_type?: "fixed" | "percentage" | "free_shipping";
   discount_value?: number;
+  is_free_shipping?: boolean;
 }
 
 const BRAZILIAN_STATES = [
@@ -71,15 +72,18 @@ const Checkout = () => {
     code: string;
     description?: string;
     discount_amount: number;
-    discount_type: "fixed" | "percentage";
+    discount_type: "fixed" | "percentage" | "free_shipping";
     discount_value: number;
+    is_free_shipping?: boolean;
   } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const subtotal = totalPrice;
   const shippingTotal = selectedShipping?.price || 0;
-  const discountAmount = appliedCoupon?.discount_amount || 0;
+  const discountAmount = appliedCoupon?.discount_type === "free_shipping"
+    ? shippingTotal
+    : appliedCoupon?.discount_amount || 0;
   const finalTotal = Math.max(subtotal + shippingTotal - discountAmount, 0);
 
   useEffect(() => {
@@ -217,9 +221,15 @@ const Checkout = () => {
       discount_amount: Number(couponResult.discount_amount || 0),
       discount_type: couponResult.discount_type || "fixed",
       discount_value: Number(couponResult.discount_value || 0),
+      is_free_shipping: couponResult.is_free_shipping || false,
     });
     setCouponCode(couponResult.code || normalizedCode);
-    toast({ title: "Cupom aplicado!", description: `Desconto de ${formatPrice(Number(couponResult.discount_amount || 0))}` });
+    toast({
+      title: "Cupom aplicado!",
+      description: couponResult.is_free_shipping
+        ? "Frete grátis ativado para este pedido."
+        : `Desconto de ${formatPrice(Number(couponResult.discount_amount || 0))}`,
+    });
   };
 
   const removeCoupon = () => {
@@ -551,7 +561,9 @@ const Checkout = () => {
                           <p className="text-xs text-muted-foreground">
                             {appliedCoupon.description || (appliedCoupon.discount_type === "percentage"
                               ? `${appliedCoupon.discount_value}% de desconto`
-                              : `${formatPrice(appliedCoupon.discount_value)} de desconto`)}
+                              : appliedCoupon.discount_type === "free_shipping"
+                                ? "Frete grátis neste pedido"
+                                : `${formatPrice(appliedCoupon.discount_value)} de desconto`)}
                           </p>
                         </div>
                         <Button type="button" variant="ghost" onClick={removeCoupon}>Remover</Button>
@@ -572,13 +584,15 @@ const Checkout = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Frete ({selectedShipping.name})</span>
                       <span className="font-semibold text-foreground">
-                        {formatPrice(selectedShipping.price)}
+                        {appliedCoupon?.discount_type === "free_shipping" ? "Grátis" : formatPrice(selectedShipping.price)}
                       </span>
                     </div>
                   )}
                   {appliedCoupon && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Desconto ({appliedCoupon.code})</span>
+                      <span className="text-muted-foreground">
+                        {appliedCoupon.discount_type === "free_shipping" ? `Frete grátis (${appliedCoupon.code})` : `Desconto (${appliedCoupon.code})`}
+                      </span>
                       <span className="font-semibold text-primary">- {formatPrice(discountAmount)}</span>
                     </div>
                   )}
