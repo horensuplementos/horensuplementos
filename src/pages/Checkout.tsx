@@ -27,6 +27,17 @@ interface AddressForm {
   zip_code: string;
 }
 
+interface CouponValidationResult {
+  valid: boolean;
+  message?: string;
+  coupon_id?: string;
+  code?: string;
+  description?: string;
+  discount_amount?: number;
+  discount_type?: "fixed" | "percentage";
+  discount_value?: number;
+}
+
 const BRAZILIAN_STATES = [
   "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG",
   "PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"
@@ -185,6 +196,7 @@ const Checkout = () => {
       p_code: normalizedCode,
       p_subtotal: subtotal,
     });
+    const couponResult = data as unknown as CouponValidationResult | null;
     setCouponLoading(false);
 
     if (error) {
@@ -192,22 +204,22 @@ const Checkout = () => {
       return;
     }
 
-    if (!data?.valid) {
+    if (!couponResult?.valid) {
       setAppliedCoupon(null);
-      toast({ title: "Cupom inválido", description: data?.message || "Não foi possível aplicar o cupom.", variant: "destructive" });
+      toast({ title: "Cupom inválido", description: couponResult?.message || "Não foi possível aplicar o cupom.", variant: "destructive" });
       return;
     }
 
     setAppliedCoupon({
-      coupon_id: data.coupon_id,
-      code: data.code,
-      description: data.description || undefined,
-      discount_amount: Number(data.discount_amount || 0),
-      discount_type: data.discount_type,
-      discount_value: Number(data.discount_value || 0),
+      coupon_id: couponResult.coupon_id || "",
+      code: couponResult.code || normalizedCode,
+      description: couponResult.description || undefined,
+      discount_amount: Number(couponResult.discount_amount || 0),
+      discount_type: couponResult.discount_type || "fixed",
+      discount_value: Number(couponResult.discount_value || 0),
     });
-    setCouponCode(data.code);
-    toast({ title: "Cupom aplicado!", description: `Desconto de ${formatPrice(Number(data.discount_amount || 0))}` });
+    setCouponCode(couponResult.code || normalizedCode);
+    toast({ title: "Cupom aplicado!", description: `Desconto de ${formatPrice(Number(couponResult.discount_amount || 0))}` });
   };
 
   const removeCoupon = () => {
