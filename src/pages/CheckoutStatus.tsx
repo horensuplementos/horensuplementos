@@ -92,8 +92,9 @@ const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
                   const { data } = await supabase.functions.invoke("create-payment", {
                     body: { order_id: orderId },
                   });
-                  if (data?.init_point) {
-                    window.location.href = data.init_point;
+                  const paymentUrl = data?.checkout_url || data?.init_point || data?.sandbox_init_point;
+                  if (paymentUrl) {
+                    window.location.href = paymentUrl;
                   }
                 }}
               >

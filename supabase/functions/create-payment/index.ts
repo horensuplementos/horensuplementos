@@ -10,6 +10,19 @@ const BodySchema = z.object({
   order_id: z.string().uuid(),
 })
 
+const EmailSchema = z.string().trim().email()
+
+const normalizeFullName = (value: string | null | undefined) =>
+  (value || '').replace(/\s+/g, ' ').trim()
+
+const splitFullName = (value: string) => {
+  const [firstName, ...rest] = value.split(' ')
+  return {
+    first_name: firstName || value,
+    last_name: rest.join(' ').trim() || '-',
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -26,6 +39,7 @@ Deno.serve(async (req) => {
     if (!MERCADO_PAGO_TOKEN) {
       return json({ error: 'MERCADO_PAGO_TOKEN não configurado' }, 500)
     }
+    const isTestToken = MERCADO_PAGO_TOKEN.startsWith('TEST-')
 
     // Validate auth
     const authHeader = req.headers.get('Authorization')
@@ -58,6 +72,25 @@ Deno.serve(async (req) => {
 
     if (orderErr || !order) return json({ error: 'Pedido não encontrado' }, 404)
 
+    const payerName = normalizeFullName(order.customer_name)
+    const payerEmail = EmailSchema.safeParse(order.customer_email)
+    const payerCpf = String(order.customer_cpf || '').replace(/\D/g, '')
+    const payerPhone = String(order.customer_phone || '').replace(/\D/g, '')
+
+    if (!payerName || payerName.split(' ').length < 2) {
+      return json({ error: 'Nome completo do pagador é obrigatório' }, 400)
+    }
+
+    if (!payerEmail.success) {
+      return json({ error: 'E-mail válido do pagador é obrigatório' }, 400)
+    }
+
+    if (payerCpf.length !== 11) {
+      return json({ error: 'CPF válido do pagador é obrigatório' }, 400)
+    }
+
+    const { first_name, last_name } = splitFullName(payerName)
+
     // Fetch order items
     const { data: items } = await supabase
       .from('order_items')
@@ -88,12 +121,12 @@ Deno.serve(async (req) => {
       items: mpItems,
       external_reference: order_id,
       payer: {
-        name: order.customer_name,
-        email: order.customer_email,
-        phone: order.customer_phone ? { number: order.customer_phone } : undefined,
-        identification: order.customer_cpf
-          ? { type: 'CPF', number: String(order.customer_cpf).replace(/\D/g, '') }
-          : undefined,
+        name: payerName,
+        first_name,
+        last_name,
+        email: payerEmail.data,
+        phone: payerPhone ? { number: payerPhone } : undefined,
+        identification: { type: 'CPF', number: payerCpf },
       },
       back_urls: {
         success: `${siteUrl}/checkout/sucesso?order_id=${order_id}`,
@@ -102,6 +135,7 @@ Deno.serve(async (req) => {
       },
       auto_return: 'approved',
       payment_methods: {
+        excluded_payment_methods: [],
         excluded_payment_types: [],
         installments: 12,
       },
@@ -129,6 +163,12 @@ Deno.serve(async (req) => {
 
     console.log('MP preference created:', mpData.id)
 
+    const checkoutUrl = isTestToken ? mpData.sandbox_init_point : mpData.init_point
+
+    if (!checkoutUrl) {
+      return json({ error: 'Mercado Pago não retornou a URL de checkout esperada' }, 502)
+    }
+
     // Update order with MP preference id
     await supabase
       .from('orders')
@@ -136,6 +176,7 @@ Deno.serve(async (req) => {
       .eq('id', order_id)
 
     return json({
+      checkout_url: checkoutUrl,
       init_point: mpData.init_point,
       sandbox_init_point: mpData.sandbox_init_point,
       preference_id: mpData.id,
