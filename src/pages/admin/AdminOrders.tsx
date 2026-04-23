@@ -107,7 +107,7 @@ const AdminOrders = () => {
             service: order.shipping_service_id,
             from: {
               name: "Horen Suplementos",
-              email: "contato@horen.com.br",
+                email: "sitehorensuplementos@gmail.com",
               postal_code: "02613000",
               address: "Rua Exemplo",
               number: "100",
@@ -391,7 +391,14 @@ const AdminOrders = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={deleteOrder} disabled={deleteLoading} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteOrder();
+              }}
+              disabled={deleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {deleteLoading ? "Excluindo..." : "Excluir agora"}
             </AlertDialogAction>
           </AlertDialogFooter>

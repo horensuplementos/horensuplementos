@@ -9,7 +9,7 @@ const corsHeaders = {
 const MELHOR_ENVIO_BASE = 'https://melhorenvio.com.br/api/v2/me'
 const FROM_ORIGIN = {
   name: 'Horen Suplementos',
-  email: 'contato@horen.com.br',
+  email: 'sitehorensuplementos@gmail.com',
   postal_code: '02613000',
   address: 'Rua Exemplo',
   number: '100',
@@ -27,7 +27,7 @@ function getMelhorEnvioHeaders(token: string) {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`,
-    'User-Agent': 'HorenSuplementos contato@horen.com.br',
+    'User-Agent': 'HorenSuplementos sitehorensuplementos@gmail.com',
   }
 }
 

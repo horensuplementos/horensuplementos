@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-        'User-Agent': 'HorenSuplementos contato@horen.com.br',
+        'User-Agent': 'HorenSuplementos sitehorensuplementos@gmail.com',
       },
       body: JSON.stringify({
         from: { postal_code: FROM_ZIP },

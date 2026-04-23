@@ -56,7 +56,7 @@ function getHeaders(token: string) {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`,
-    'User-Agent': 'HorenSuplementos contato@horen.com.br',
+    'User-Agent': 'HorenSuplementos sitehorensuplementos@gmail.com',
   }
 }
 

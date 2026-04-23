@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${melhorEnvioToken}`,
-      'User-Agent': 'HorenSuplementos contato@horen.com.br',
+      'User-Agent': 'HorenSuplementos sitehorensuplementos@gmail.com',
     }
 
     const orderIds = orders.map(o => o.shipping_order_id).filter(Boolean)
