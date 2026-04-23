@@ -12,6 +12,7 @@ export const useAdmin = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         setIsAdmin(false);
+        setUserId(null);
         setPermissionLevel(null);
         setLoading(false);
         return;
@@ -25,9 +26,23 @@ export const useAdmin = () => {
         .eq("user_id", session.user.id)
         .maybeSingle();
 
-      const isActiveAdmin = !!data?.active;
-      setPermissionLevel(isActiveAdmin ? data.permission_level : null);
-      setIsAdmin(isActiveAdmin);
+      if (data?.active) {
+        setPermissionLevel(data.permission_level);
+        setIsAdmin(true);
+        setLoading(false);
+        return;
+      }
+
+      const { data: legacyRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      const hasLegacyAdminRole = legacyRole?.role === "admin";
+      setPermissionLevel(hasLegacyAdminRole ? "admin" : null);
+      setIsAdmin(hasLegacyAdminRole);
       setLoading(false);
     };
 
