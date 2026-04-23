@@ -86,20 +86,30 @@ const Header = () => {
           )}
 
           {user ? (
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                setUser(null);
-                setIsAdmin(false);
-              }}
-              className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
-              title="Sair"
-            >
-              <LogOut className="w-5 h-5 text-foreground" />
-            </button>
+            <>
+              <button
+                onClick={() => navigate("/conta")}
+                className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
+                title="Minha conta"
+              >
+                <User className="w-5 h-5 text-foreground" />
+              </button>
+
+              <button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setUser(null);
+                  setIsAdmin(false);
+                }}
+                className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
+                title="Sair"
+              >
+                <LogOut className="w-5 h-5 text-foreground" />
+              </button>
+            </>
           ) : (
             <button
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/auth", { state: { redirectTo: "/conta" } })}
               className="p-2.5 hover:bg-secondary rounded-xl transition-colors"
               title="Login"
             >

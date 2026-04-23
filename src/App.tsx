@@ -10,6 +10,7 @@ import Blog from "./pages/Blog.tsx";
 import Auth from "./pages/Auth.tsx";
 import Checkout from "./pages/Checkout.tsx";
 import CheckoutStatus from "./pages/CheckoutStatus.tsx";
+import AccountOrders from "./pages/AccountOrders.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import AdminRoute from "./components/AdminRoute.tsx";
 import Dashboard from "./pages/admin/Dashboard.tsx";
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/produto/:id" element={<ProductDetail />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/conta" element={<AccountOrders />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/checkout/sucesso" element={<CheckoutStatus type="sucesso" />} />
               <Route path="/checkout/falha" element={<CheckoutStatus type="falha" />} />
