@@ -14,6 +14,135 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          id: string
+          invited_by: string | null
+          permission_level: Database["public"]["Enums"]["admin_permission_level"]
+          revoked_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invited_by?: string | null
+          permission_level?: Database["public"]["Enums"]["admin_permission_level"]
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invited_by?: string | null
+          permission_level?: Database["public"]["Enums"]["admin_permission_level"]
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      admin_profiles: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          id: string
+          invited_by: string | null
+          permission_level: Database["public"]["Enums"]["admin_permission_level"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          invited_by?: string | null
+          permission_level?: Database["public"]["Enums"]["admin_permission_level"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          invited_by?: string | null
+          permission_level?: Database["public"]["Enums"]["admin_permission_level"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cart_sessions: {
+        Row: {
+          abandoned_at: string | null
+          cart_total: number
+          converted_order_id: string | null
+          created_at: string
+          email: string | null
+          first_product_added_at: string | null
+          id: string
+          items: Json
+          items_count: number
+          last_activity_at: string
+          metadata: Json
+          recovered_at: string | null
+          recovery_sent_at: string | null
+          session_id: string
+          status: Database["public"]["Enums"]["cart_session_status"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          abandoned_at?: string | null
+          cart_total?: number
+          converted_order_id?: string | null
+          created_at?: string
+          email?: string | null
+          first_product_added_at?: string | null
+          id?: string
+          items?: Json
+          items_count?: number
+          last_activity_at?: string
+          metadata?: Json
+          recovered_at?: string | null
+          recovery_sent_at?: string | null
+          session_id: string
+          status?: Database["public"]["Enums"]["cart_session_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          abandoned_at?: string | null
+          cart_total?: number
+          converted_order_id?: string | null
+          created_at?: string
+          email?: string | null
+          first_product_added_at?: string | null
+          id?: string
+          items?: Json
+          items_count?: number
+          last_activity_at?: string
+          metadata?: Json
+          recovered_at?: string | null
+          recovery_sent_at?: string | null
+          session_id?: string
+          status?: Database["public"]["Enums"]["cart_session_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           active: boolean
@@ -93,6 +222,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "order_items_order_id_fkey_real"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "order_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -105,6 +241,7 @@ export type Database = {
         Row: {
           automation_log: Json | null
           bling_order_id: string | null
+          cart_session_id: string | null
           coupon_code: string | null
           coupon_id: string | null
           created_at: string
@@ -134,6 +271,7 @@ export type Database = {
         Insert: {
           automation_log?: Json | null
           bling_order_id?: string | null
+          cart_session_id?: string | null
           coupon_code?: string | null
           coupon_id?: string | null
           created_at?: string
@@ -163,6 +301,7 @@ export type Database = {
         Update: {
           automation_log?: Json | null
           bling_order_id?: string | null
+          cart_session_id?: string | null
           coupon_code?: string | null
           coupon_id?: string | null
           created_at?: string
@@ -190,6 +329,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_cart_session_id_fkey"
+            columns: ["cart_session_id"]
+            isOneToOne: false
+            referencedRelation: "cart_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_coupon_id_fkey"
             columns: ["coupon_id"]
@@ -299,6 +445,51 @@ export type Database = {
         }
         Relationships: []
       }
+      site_content_sections: {
+        Row: {
+          active: boolean
+          created_at: string
+          cta_label: string | null
+          cta_link: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          items: Json
+          section_key: string
+          subtitle: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          cta_label?: string | null
+          cta_link?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          items?: Json
+          section_key: string
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          cta_label?: string | null
+          cta_link?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          items?: Json
+          section_key?: string
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -319,6 +510,17 @@ export type Database = {
       }
     }
     Views: {
+      cart_metrics_summary: {
+        Row: {
+          abandoned_carts: number | null
+          abandoned_value: number | null
+          carts_with_items: number | null
+          converted_carts: number | null
+          converted_value: number | null
+          recovered_carts: number | null
+        }
+        Relationships: []
+      }
       coupon_usage_summary: {
         Row: {
           active: boolean | null
@@ -340,6 +542,10 @@ export type Database = {
       }
     }
     Functions: {
+      accept_admin_invitation: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: Json
+      }
       calculate_coupon_discount: {
         Args: {
           p_discount_type: Database["public"]["Enums"]["coupon_discount_type"]
@@ -355,14 +561,33 @@ export type Database = {
         }
         Returns: boolean
       }
+      mark_stale_carts_abandoned: {
+        Args: { p_minutes?: number }
+        Returns: number
+      }
       normalize_coupon_code: { Args: { p_code: string }; Returns: string }
+      upsert_cart_session: {
+        Args: {
+          p_cart_total: number
+          p_email: string
+          p_items: Json
+          p_items_count: number
+          p_metadata?: Json
+          p_session_id: string
+          p_status: Database["public"]["Enums"]["cart_session_status"]
+          p_user_id: string
+        }
+        Returns: string
+      }
       validate_coupon: {
         Args: { p_code: string; p_subtotal: number }
         Returns: Json
       }
     }
     Enums: {
+      admin_permission_level: "admin" | "operator" | "editor"
       app_role: "admin" | "user"
+      cart_session_status: "active" | "abandoned" | "converted" | "recovered"
       coupon_discount_type: "fixed" | "percentage"
     }
     CompositeTypes: {
@@ -491,7 +716,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      admin_permission_level: ["admin", "operator", "editor"],
       app_role: ["admin", "user"],
+      cart_session_status: ["active", "abandoned", "converted", "recovered"],
       coupon_discount_type: ["fixed", "percentage"],
     },
   },
