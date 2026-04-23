@@ -588,7 +588,7 @@ export type Database = {
       admin_permission_level: "admin" | "operator" | "editor"
       app_role: "admin" | "user"
       cart_session_status: "active" | "abandoned" | "converted" | "recovered"
-      coupon_discount_type: "fixed" | "percentage"
+      coupon_discount_type: "fixed" | "percentage" | "free_shipping"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -719,7 +719,7 @@ export const Constants = {
       admin_permission_level: ["admin", "operator", "editor"],
       app_role: ["admin", "user"],
       cart_session_status: ["active", "abandoned", "converted", "recovered"],
-      coupon_discount_type: ["fixed", "percentage"],
+      coupon_discount_type: ["fixed", "percentage", "free_shipping"],
     },
   },
 } as const
