@@ -33,11 +33,11 @@ const Footer = () => {
             <h3 className="font-heading font-semibold text-foreground mb-4">Contato</h3>
             <div className="space-y-3">
               <a
-                href="mailto:contato@horen.com.br"
+                href="mailto:sitehorensuplementos@gmail.com"
                 className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors font-body"
               >
                 <Mail className="w-4 h-4" />
-                contato@horen.com.br
+                sitehorensuplementos@gmail.com
               </a>
               <a
                 href="tel:+5511999999999"
