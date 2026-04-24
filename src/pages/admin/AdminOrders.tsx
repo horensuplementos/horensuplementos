@@ -140,7 +140,18 @@ const AdminOrders = () => {
         },
       });
 
-      if (cartError) throw cartError;
+      if (cartError) {
+        let msg = cartError.message;
+        try {
+          const ctxBody = await (cartError as any).context?.json?.();
+          if (ctxBody?.error) msg = typeof ctxBody.error === 'string' ? ctxBody.error : JSON.stringify(ctxBody.error);
+        } catch {}
+        throw new Error(msg);
+      }
+      if (cartData?.error) {
+        const msg = typeof cartData.error === 'string' ? cartData.error : JSON.stringify(cartData.error);
+        throw new Error(msg);
+      }
       
       const meOrderId = cartData?.data?.id;
       if (!meOrderId) {
