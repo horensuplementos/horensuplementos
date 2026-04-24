@@ -75,13 +75,23 @@ const AdminProducts = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const stockNum = parseInt(form.stock);
+    if (isNaN(stockNum) || stockNum < 0) {
+      toast({ title: "Estoque inválido", description: "O estoque não pode ser negativo.", variant: "destructive" });
+      return;
+    }
+    const priceNum = parseFloat(form.price);
+    if (isNaN(priceNum) || priceNum < 0) {
+      toast({ title: "Preço inválido", description: "O preço não pode ser negativo.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
     const payload = {
       name: form.name,
       description: form.description || null,
-      price: parseFloat(form.price),
-      stock: parseInt(form.stock),
+      price: priceNum,
+      stock: stockNum,
       category: form.category || null,
       weight: form.weight || null,
       active: form.active,
@@ -213,9 +223,14 @@ const AdminProducts = () => {
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Estoque *</label>
                 <input
                   type="number"
+                  min={0}
+                  step={1}
                   className={inputClass}
                   value={form.stock}
-                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || parseInt(v) >= 0) setForm({ ...form, stock: v });
+                  }}
                   required
                 />
               </div>
