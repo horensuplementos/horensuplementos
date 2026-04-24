@@ -107,8 +107,8 @@ const AdminOrders = () => {
             service: order.shipping_service_id,
             from: {
               name: "Horen Suplementos",
-                email: "sitehorensuplementos@gmail.com",
-              document: "65418995000150",
+              email: "sitehorensuplementos@gmail.com",
+              company_document: "65418995000150",
               phone: "11957943870",
               postal_code: "02613000",
               address: "Rua Doutor Cesar",
@@ -178,6 +178,11 @@ const AdminOrders = () => {
       });
       if (checkoutError) throw checkoutError;
 
+      const { data: printData, error: printError } = await supabase.functions.invoke("shipping-label", {
+        body: { action: "print", order_ids: [meOrderId] },
+      });
+      if (printError) throw printError;
+
       // Extract tracking code
       const purchaseData = checkoutData?.data?.purchase || checkoutData?.data;
       let trackingCode = "";
@@ -192,10 +197,40 @@ const AdminOrders = () => {
         status: "enviado",
       } as any).eq("id", order.id);
 
+      const printUrl = printData?.data?.url || printData?.data?.link || printData?.data?.preview_url;
+      if (printUrl) {
+        window.open(printUrl, "_blank", "noopener,noreferrer");
+      }
+
       toast({ title: "Etiqueta gerada com sucesso!", description: trackingCode ? `Rastreio: ${trackingCode}` : undefined });
     } catch (err: any) {
       console.error("Label generation error:", err);
       toast({ title: "Erro ao gerar etiqueta", description: err.message, variant: "destructive" });
+    } finally {
+      setShippingLoading(null);
+    }
+  };
+
+  const printLabel = async (order: any) => {
+    if (!order.shipping_order_id) {
+      toast({ title: "Etiqueta indisponível", description: "Este pedido ainda não possui etiqueta gerada.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setShippingLoading(order.id);
+      const { data, error } = await supabase.functions.invoke("shipping-label", {
+        body: { action: "print", order_ids: [order.shipping_order_id] },
+      });
+
+      if (error) throw error;
+
+      const printUrl = data?.data?.url || data?.data?.link || data?.data?.preview_url;
+      if (!printUrl) throw new Error("A etiqueta foi gerada, mas o link de impressão não foi retornado.");
+
+      window.open(printUrl, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      toast({ title: "Erro ao abrir etiqueta", description: err.message, variant: "destructive" });
     } finally {
       setShippingLoading(null);
     }
@@ -367,6 +402,21 @@ const AdminOrders = () => {
                           <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Gerando etiqueta...</>
                         ) : (
                           <><Truck className="w-4 h-4 mr-2" /> Gerar Etiqueta de Envio</>
+                        )}
+                      </Button>
+                    )}
+
+                    {order.shipping_order_id && (
+                      <Button
+                        onClick={() => printLabel(order)}
+                        disabled={shippingLoading === order.id}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        {shippingLoading === order.id ? (
+                          <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Abrindo etiqueta...</>
+                        ) : (
+                          <><Truck className="w-4 h-4 mr-2" /> Imprimir Etiqueta</>
                         )}
                       </Button>
                     )}
