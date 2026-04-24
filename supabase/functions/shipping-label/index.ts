@@ -6,6 +6,45 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const MELHOR_ENVIO_BASE = 'https://melhorenvio.com.br/api/v2/me'
 
+function isValidCPF(cpf: string): boolean {
+  const c = (cpf || '').replace(/\D/g, '')
+  if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += parseInt(c[i]) * (10 - i)
+  let d1 = (sum * 10) % 11
+  if (d1 === 10) d1 = 0
+  if (d1 !== parseInt(c[9])) return false
+  sum = 0
+  for (let i = 0; i < 10; i++) sum += parseInt(c[i]) * (11 - i)
+  let d2 = (sum * 10) % 11
+  if (d2 === 10) d2 = 0
+  return d2 === parseInt(c[10])
+}
+
+function isValidCNPJ(cnpj: string): boolean {
+  const c = (cnpj || '').replace(/\D/g, '')
+  if (c.length !== 14 || /^(\d)\1+$/.test(c)) return false
+  const calc = (base: string, weights: number[]) => {
+    const sum = weights.reduce((acc, w, i) => acc + parseInt(base[i]) * w, 0)
+    const r = sum % 11
+    return r < 2 ? 0 : 11 - r
+  }
+  const w1 = [5,4,3,2,9,8,7,6,5,4,3,2]
+  const w2 = [6,5,4,3,2,9,8,7,6,5,4,3,2]
+  const d1 = calc(c.slice(0, 12), w1)
+  if (d1 !== parseInt(c[12])) return false
+  const d2 = calc(c.slice(0, 13), w2)
+  return d2 === parseInt(c[13])
+}
+
+function isValidDocument(doc?: string): boolean {
+  if (!doc) return false
+  const d = doc.replace(/\D/g, '')
+  if (d.length === 11) return isValidCPF(d)
+  if (d.length === 14) return isValidCNPJ(d)
+  return false
+}
+
 const BodySchema = z.object({
   action: z.enum(['add_to_cart', 'generate', 'checkout', 'print', 'tracking']),
   // For add_to_cart
@@ -103,6 +142,14 @@ Deno.serve(async (req) => {
     // 1. Add shipment to Melhor Envio cart
     if (action === 'add_to_cart') {
       if (!shipment) return json({ error: 'Dados de envio obrigatórios' }, 400)
+
+      // Pre-validate documents to give a friendly message instead of generic ME error
+      if (!isValidDocument(shipment.from.document)) {
+        return json({ error: 'CPF/CNPJ do remetente inválido. Verifique a configuração da loja.' }, 400)
+      }
+      if (!isValidDocument(shipment.to.document)) {
+        return json({ error: 'CPF/CNPJ do destinatário inválido. Peça ao cliente para corrigir o documento no cadastro.' }, 400)
+      }
 
       const res = await fetchWithRetry(`${MELHOR_ENVIO_BASE}/cart`, {
         method: 'POST',
