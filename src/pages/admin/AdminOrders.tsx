@@ -211,6 +211,31 @@ const AdminOrders = () => {
     }
   };
 
+  const printLabel = async (order: any) => {
+    if (!order.shipping_order_id) {
+      toast({ title: "Etiqueta indisponível", description: "Este pedido ainda não possui etiqueta gerada.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setShippingLoading(order.id);
+      const { data, error } = await supabase.functions.invoke("shipping-label", {
+        body: { action: "print", order_ids: [order.shipping_order_id] },
+      });
+
+      if (error) throw error;
+
+      const printUrl = data?.data?.url || data?.data?.link || data?.data?.preview_url;
+      if (!printUrl) throw new Error("A etiqueta foi gerada, mas o link de impressão não foi retornado.");
+
+      window.open(printUrl, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      toast({ title: "Erro ao abrir etiqueta", description: err.message, variant: "destructive" });
+    } finally {
+      setShippingLoading(null);
+    }
+  };
+
   const formatPrice = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -377,6 +402,21 @@ const AdminOrders = () => {
                           <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Gerando etiqueta...</>
                         ) : (
                           <><Truck className="w-4 h-4 mr-2" /> Gerar Etiqueta de Envio</>
+                        )}
+                      </Button>
+                    )}
+
+                    {order.shipping_order_id && (
+                      <Button
+                        onClick={() => printLabel(order)}
+                        disabled={shippingLoading === order.id}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        {shippingLoading === order.id ? (
+                          <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Abrindo etiqueta...</>
+                        ) : (
+                          <><Truck className="w-4 h-4 mr-2" /> Imprimir Etiqueta</>
                         )}
                       </Button>
                     )}
