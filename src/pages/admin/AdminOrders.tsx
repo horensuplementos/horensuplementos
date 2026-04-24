@@ -16,6 +16,26 @@ const statusColors: Record<string, string> = {
   cancelado: "bg-red-500/20 text-red-400",
 };
 
+const extractFunctionErrorMessage = async (error: any, fallback: string) => {
+  let message = error?.message || fallback;
+
+  try {
+    const body = await error?.context?.json?.();
+    if (body?.error) {
+      message = typeof body.error === "string" ? body.error : JSON.stringify(body.error);
+    }
+  } catch {
+    // noop
+  }
+
+  return message;
+};
+
+const isWalletBalanceError = (message: string) => {
+  const normalized = message.toLowerCase();
+  return normalized.includes("saldo") && normalized.includes("insuficiente");
+};
+
 const AdminOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -140,14 +160,7 @@ const AdminOrders = () => {
         },
       });
 
-      if (cartError) {
-        let msg = cartError.message;
-        try {
-          const ctxBody = await (cartError as any).context?.json?.();
-          if (ctxBody?.error) msg = typeof ctxBody.error === 'string' ? ctxBody.error : JSON.stringify(ctxBody.error);
-        } catch {}
-        throw new Error(msg);
-      }
+      if (cartError) throw new Error(await extractFunctionErrorMessage(cartError, "Erro ao criar envio"));
       if (cartData?.error) {
         const msg = typeof cartData.error === 'string' ? cartData.error : JSON.stringify(cartData.error);
         throw new Error(msg);
@@ -170,25 +183,53 @@ const AdminOrders = () => {
       const { data: genData, error: genError } = await supabase.functions.invoke("shipping-label", {
         body: { action: "generate", order_ids: [meOrderId] },
       });
-      if (genError) throw genError;
+      if (genError) throw new Error(await extractFunctionErrorMessage(genError, "Erro ao gerar etiqueta"));
+      if (genData?.error) {
+        const msg = typeof genData.error === "string" ? genData.error : JSON.stringify(genData.error);
+        throw new Error(msg);
+      }
+
+      let trackingCode = "";
+      let printUrl = "";
 
       // Step 3: Checkout (purchase label)
       const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke("shipping-label", {
         body: { action: "checkout", order_ids: [meOrderId] },
       });
-      if (checkoutError) throw checkoutError;
+      if (checkoutError || checkoutData?.error) {
+        const message = checkoutError
+          ? await extractFunctionErrorMessage(checkoutError, "Erro ao comprar etiqueta")
+          : typeof checkoutData?.error === "string"
+            ? checkoutData.error
+            : JSON.stringify(checkoutData?.error);
+
+        if (isWalletBalanceError(message)) {
+          await supabase.from("orders").update({
+            shipping_status: "aguardando_pagamento_melhor_envio",
+          } as any).eq("id", order.id);
+
+          toast({
+            title: "Etiqueta enviada ao Melhor Envio",
+            description: "Ela foi criada corretamente. Falta apenas concluir o pagamento na sua carteira do Melhor Envio para imprimir.",
+          });
+          return;
+        }
+
+        throw new Error(message);
+      }
+
+      const purchaseData = checkoutData?.data?.purchase || checkoutData?.data;
+      if (purchaseData?.orders) {
+        const orderInfo = purchaseData.orders.find((o: any) => o.id === meOrderId);
+        trackingCode = orderInfo?.tracking || "";
+      }
 
       const { data: printData, error: printError } = await supabase.functions.invoke("shipping-label", {
         body: { action: "print", order_ids: [meOrderId] },
       });
-      if (printError) throw printError;
 
-      // Extract tracking code
-      const purchaseData = checkoutData?.data?.purchase || checkoutData?.data;
-      let trackingCode = "";
-      if (purchaseData?.orders) {
-        const orderInfo = purchaseData.orders.find((o: any) => o.id === meOrderId);
-        trackingCode = orderInfo?.tracking || "";
+      if (!printError && !printData?.error) {
+        printUrl = printData?.data?.url || printData?.data?.link || printData?.data?.preview_url || "";
       }
 
       await supabase.from("orders").update({
@@ -197,7 +238,6 @@ const AdminOrders = () => {
         status: "enviado",
       } as any).eq("id", order.id);
 
-      const printUrl = printData?.data?.url || printData?.data?.link || printData?.data?.preview_url;
       if (printUrl) {
         window.open(printUrl, "_blank", "noopener,noreferrer");
       }
