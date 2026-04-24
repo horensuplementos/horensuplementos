@@ -107,8 +107,8 @@ const AdminOrders = () => {
             service: order.shipping_service_id,
             from: {
               name: "Horen Suplementos",
-                email: "sitehorensuplementos@gmail.com",
-              document: "65418995000150",
+              email: "sitehorensuplementos@gmail.com",
+              company_document: "65418995000150",
               phone: "11957943870",
               postal_code: "02613000",
               address: "Rua Doutor Cesar",
@@ -178,6 +178,11 @@ const AdminOrders = () => {
       });
       if (checkoutError) throw checkoutError;
 
+      const { data: printData, error: printError } = await supabase.functions.invoke("shipping-label", {
+        body: { action: "print", order_ids: [meOrderId] },
+      });
+      if (printError) throw printError;
+
       // Extract tracking code
       const purchaseData = checkoutData?.data?.purchase || checkoutData?.data;
       let trackingCode = "";
@@ -191,6 +196,11 @@ const AdminOrders = () => {
         tracking_code: trackingCode || null,
         status: "enviado",
       } as any).eq("id", order.id);
+
+      const printUrl = printData?.data?.url || printData?.data?.link || printData?.data?.preview_url;
+      if (printUrl) {
+        window.open(printUrl, "_blank", "noopener,noreferrer");
+      }
 
       toast({ title: "Etiqueta gerada com sucesso!", description: trackingCode ? `Rastreio: ${trackingCode}` : undefined });
     } catch (err: any) {
