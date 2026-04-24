@@ -55,6 +55,7 @@ const BodySchema = z.object({
       phone: z.string().optional(),
       email: z.string().email(),
       document: z.string().optional(),
+      company_document: z.string().optional(),
       postal_code: z.string(),
       address: z.string(),
       number: z.string(),
@@ -144,7 +145,8 @@ Deno.serve(async (req) => {
       if (!shipment) return json({ error: 'Dados de envio obrigatórios' }, 400)
 
       // Pre-validate documents to give a friendly message instead of generic ME error
-      if (!isValidDocument(shipment.from.document)) {
+      const senderDocument = shipment.from.company_document || shipment.from.document
+      if (!isValidDocument(senderDocument)) {
         return json({ error: 'CPF/CNPJ do remetente inválido. Verifique a configuração da loja.' }, 400)
       }
       if (!isValidDocument(shipment.to.document)) {
@@ -171,7 +173,7 @@ Deno.serve(async (req) => {
       const res = await fetchWithRetry(`${MELHOR_ENVIO_BASE}/shipment/generate`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ orders: order_ids }),
+        body: JSON.stringify({ orders: order_ids, mode: 'public' }),
       })
       const data = await res.json()
       if (!res.ok) {
