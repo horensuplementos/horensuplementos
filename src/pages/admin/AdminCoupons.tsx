@@ -135,7 +135,7 @@ const AdminCoupons = () => {
     );
   }, [coupons]);
 
-  const fetchCoupons = async () => {
+  const fetchCoupons = async (): Promise<CouponSummary[] | null> => {
     const [{ data: couponData, error: couponError }, { data: ordersData, error: ordersError }] = await Promise.all([
       supabase.from("coupon_usage_summary").select("*").order("code"),
       supabase
@@ -151,10 +151,11 @@ const AdminCoupons = () => {
         description: couponError?.message || ordersError?.message,
         variant: "destructive",
       });
-      return;
+      return null;
     }
 
-    setCoupons((couponData as CouponSummary[]) || []);
+    const couponSummaries = (couponData as CouponSummary[]) || [];
+    setCoupons(couponSummaries);
     const grouped = ((ordersData as Array<CouponOrder & { coupon_id: string }>) || []).reduce<Record<string, CouponOrder[]>>(
       (acc, order) => {
         if (!order.coupon_id) return acc;
@@ -165,6 +166,7 @@ const AdminCoupons = () => {
       {}
     );
     setOrdersByCoupon(grouped);
+    return couponSummaries;
   };
 
   useEffect(() => {
@@ -256,13 +258,13 @@ const AdminCoupons = () => {
 
     setLoading(true);
     const query = editingId
-      ? supabase.from("coupons").update(payload).eq("id", editingId)
-      : supabase.from("coupons").insert(payload);
+      ? supabase.from("coupons").update(payload).eq("id", editingId).select("id, code, active").single()
+      : supabase.from("coupons").insert(payload).select("id, code, active").single();
 
-    const { error } = await query;
-    setLoading(false);
+    const { data: savedCoupon, error } = await query;
 
     if (error) {
+      setLoading(false);
       const description =
         error.message?.includes("duplicate") || error.code === "23505"
           ? "Já existe um cupom com este código."
@@ -271,12 +273,23 @@ const AdminCoupons = () => {
       return;
     }
 
+    const refreshedCoupons = await fetchCoupons();
+    setLoading(false);
+
+    if (!savedCoupon || !refreshedCoupons?.some((coupon) => coupon.id === savedCoupon.id)) {
+      toast({
+        title: "Cupom salvo, mas não confirmado na lista",
+        description: "Atualize a página e tente novamente se ele não aparecer.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: editingId ? "Cupom atualizado" : "Cupom criado",
       description: `Código ${code} ${form.active ? "ativo" : "inativo"} no checkout.`,
     });
     resetForm();
-    fetchCoupons();
   };
 
   const handleDelete = async (couponId: string) => {
