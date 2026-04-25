@@ -526,6 +526,7 @@ export type Database = {
           expires_at: string | null
           id: string | null
           last_used_at: string | null
+          minimum_order_amount: number | null
           starts_at: string | null
           total_discount_generated: number | null
           total_uses: number | null
