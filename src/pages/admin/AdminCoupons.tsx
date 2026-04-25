@@ -191,8 +191,13 @@ const AdminCoupons = () => {
       code: coupon.code,
       description: coupon.description || "",
       discount_type: coupon.discount_type,
-      discount_value: String(coupon.discount_value),
-      minimum_order_amount: String(coupon.minimum_order_amount || 0),
+      // Para valores fixos guardamos a string como centavos (ex: "1500" = R$15,00)
+      // Para percentual mantemos o valor direto (ex: "10")
+      discount_value:
+        coupon.discount_type === "fixed"
+          ? String(numberToCents(Number(coupon.discount_value || 0)))
+          : String(coupon.discount_value || ""),
+      minimum_order_amount: String(numberToCents(Number(coupon.minimum_order_amount || 0))),
       usage_limit: coupon.usage_limit ? String(coupon.usage_limit) : "",
       starts_at: coupon.starts_at ? coupon.starts_at.slice(0, 16) : "",
       expires_at: coupon.expires_at ? coupon.expires_at.slice(0, 16) : "",
