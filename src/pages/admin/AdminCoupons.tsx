@@ -63,7 +63,7 @@ const emptyForm: CouponForm = {
   description: "",
   discount_type: "percentage",
   discount_value: "",
-  minimum_order_amount: "0",
+  minimum_order_amount: "",
   usage_limit: "",
   starts_at: "",
   expires_at: "",
@@ -361,11 +361,38 @@ const AdminCoupons = () => {
               </div>
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Valor *</label>
-                <Input type="number" step="0.01" min="0" className={inputClass} value={form.discount_type === "free_shipping" ? "0" : form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} required={form.discount_type !== "free_shipping"} disabled={form.discount_type === "free_shipping"} />
+                {form.discount_type === "percentage" ? (
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="100"
+                      className={inputClass + " pr-10"}
+                      value={form.discount_value}
+                      onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
+                      placeholder="Ex: 10"
+                      required
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                  </div>
+                ) : form.discount_type === "fixed" ? (
+                  <CurrencyInput
+                    className={inputClass}
+                    valueCents={parseDigitsToCents(form.discount_value)}
+                    onChangeCents={(c) => setForm({ ...form, discount_value: String(c) })}
+                  />
+                ) : (
+                  <Input className={inputClass} value="Frete grátis" disabled />
+                )}
               </div>
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Pedido mínimo</label>
-                <Input type="number" step="0.01" min="0" className={inputClass} value={form.minimum_order_amount} onChange={(e) => setForm({ ...form, minimum_order_amount: e.target.value })} />
+                <CurrencyInput
+                  className={inputClass}
+                  valueCents={parseDigitsToCents(form.minimum_order_amount)}
+                  onChangeCents={(c) => setForm({ ...form, minimum_order_amount: String(c) })}
+                />
               </div>
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Início da validade</label>
