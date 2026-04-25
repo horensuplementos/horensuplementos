@@ -70,6 +70,44 @@ const emptyForm: CouponForm = {
   active: true,
 };
 
+// ===== Helpers de moeda em Real (BRL) =====
+// Converte centavos -> string formatada "R$ 1.234,56"
+const centsToBRL = (cents: number) =>
+  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+// Converte número (reais) -> centavos
+const numberToCents = (value: number) => Math.round((value || 0) * 100);
+
+// Converte centavos -> número em reais
+const centsToNumber = (cents: number) => Number((cents / 100).toFixed(2));
+
+// Converte qualquer string digitada em centavos (apenas dígitos)
+const parseDigitsToCents = (raw: string) => {
+  const digits = (raw || "").replace(/\D/g, "");
+  if (!digits) return 0;
+  return parseInt(digits, 10);
+};
+
+// Input controlado para valores em Real
+type CurrencyInputProps = {
+  valueCents: number;
+  onChangeCents: (cents: number) => void;
+  className?: string;
+  disabled?: boolean;
+  placeholder?: string;
+};
+const CurrencyInput = ({ valueCents, onChangeCents, className, disabled, placeholder }: CurrencyInputProps) => (
+  <Input
+    type="text"
+    inputMode="numeric"
+    className={className}
+    disabled={disabled}
+    placeholder={placeholder || "R$ 0,00"}
+    value={centsToBRL(valueCents)}
+    onChange={(e) => onChangeCents(parseDigitsToCents(e.target.value))}
+  />
+);
+
 const AdminCoupons = () => {
   const { toast } = useToast();
   const [coupons, setCoupons] = useState<CouponSummary[]>([]);
@@ -165,20 +203,53 @@ const AdminCoupons = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-      const payload = {
-      code: form.code.trim().toUpperCase(),
+    // ===== Validações =====
+    const code = form.code.trim().toUpperCase();
+    if (!code) {
+      toast({ title: "Código obrigatório", description: "Informe o código do cupom.", variant: "destructive" });
+      return;
+    }
+
+    let discountValue = 0;
+    if (form.discount_type === "percentage") {
+      discountValue = Number(form.discount_value);
+      if (!discountValue || discountValue <= 0 || discountValue > 100) {
+        toast({
+          title: "Percentual inválido",
+          description: "Informe um percentual entre 1 e 100.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (form.discount_type === "fixed") {
+      // form.discount_value armazenado como string de centavos
+      discountValue = centsToNumber(parseDigitsToCents(form.discount_value));
+      if (discountValue <= 0) {
+        toast({
+          title: "Valor inválido",
+          description: "Informe o valor do desconto em reais.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    const minOrder = centsToNumber(parseDigitsToCents(form.minimum_order_amount));
+
+    const payload = {
+      code,
       description: form.description.trim() || null,
       discount_type: form.discount_type,
-        discount_value: form.discount_type === "free_shipping" ? 0 : Number(form.discount_value),
-      minimum_order_amount: Number(form.minimum_order_amount || 0),
+      discount_value: discountValue,
+      minimum_order_amount: minOrder,
       usage_limit: form.usage_limit ? Number(form.usage_limit) : null,
       starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null,
       expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
       active: form.active,
     };
 
+    setLoading(true);
     const query = editingId
       ? supabase.from("coupons").update(payload).eq("id", editingId)
       : supabase.from("coupons").insert(payload);
@@ -187,11 +258,18 @@ const AdminCoupons = () => {
     setLoading(false);
 
     if (error) {
-      toast({ title: "Erro ao salvar cupom", description: error.message, variant: "destructive" });
+      const description =
+        error.message?.includes("duplicate") || error.code === "23505"
+          ? "Já existe um cupom com este código."
+          : error.message || "Não foi possível salvar o cupom.";
+      toast({ title: "Erro ao salvar cupom", description, variant: "destructive" });
       return;
     }
 
-    toast({ title: editingId ? "Cupom atualizado" : "Cupom criado" });
+    toast({
+      title: editingId ? "Cupom atualizado" : "Cupom criado",
+      description: `Código ${code} ${form.active ? "ativo" : "inativo"} no checkout.`,
+    });
     resetForm();
     fetchCoupons();
   };
