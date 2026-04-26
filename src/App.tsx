@@ -20,6 +20,7 @@ import AdminOrders from "./pages/admin/AdminOrders.tsx";
 import AdminContentEditor from "./pages/admin/AdminContentEditor.tsx";
 import AdminManagers from "./pages/admin/AdminManagers.tsx";
 import AdminMetrics from "./pages/admin/AdminMetrics.tsx";
+import AcceptInvite from "./pages/AcceptInvite.tsx";
 import { SiteContentProvider } from "./contexts/SiteContentContext";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/produto/:id" element={<ProductDetail />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/aceitar-convite" element={<AcceptInvite />} />
               <Route path="/conta" element={<AccountOrders />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/checkout/sucesso" element={<CheckoutStatus type="sucesso" />} />
