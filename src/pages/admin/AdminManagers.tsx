@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ShieldCheck, UserPlus, UserX } from "lucide-react";
+import { ShieldCheck, UserPlus, UserX, Mail, Copy, Send } from "lucide-react";
 
 type PermissionLevel = "admin" | "operator" | "editor";
 
@@ -27,6 +27,7 @@ type AdminInvitation = {
   created_at: string;
   accepted_at: string | null;
   revoked_at: string | null;
+  invite_token?: string | null;
 };
 
 const AdminManagers = () => {
@@ -36,6 +37,19 @@ const AdminManagers = () => {
   const [email, setEmail] = useState("");
   const [permissionLevel, setPermissionLevel] = useState<PermissionLevel>("editor");
   const [saving, setSaving] = useState(false);
+  const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
+
+  const buildAcceptUrl = (token: string) =>
+    `${window.location.origin}/aceitar-convite?token=${token}`;
+
+  const sendInviteEmail = async (invitationId: string): Promise<{ ok: boolean; acceptUrl?: string; error?: string }> => {
+    const { data, error } = await supabase.functions.invoke("send-admin-invite", {
+      body: { invitation_id: invitationId },
+    });
+    if (error) return { ok: false, error: error.message };
+    if (data?.error) return { ok: false, error: data.error, acceptUrl: data.accept_url };
+    return { ok: true, acceptUrl: data?.accept_url };
+  };
 
   const fetchData = async () => {
     const [profilesRes, invitationsRes] = await Promise.all([
@@ -69,22 +83,73 @@ const AdminManagers = () => {
     if (!email.trim()) return;
     setSaving(true);
 
-    const { error } = await (supabase as any).from("admin_invitations").insert({
-      email: email.trim().toLowerCase(),
-      permission_level: permissionLevel,
-    });
-
-    setSaving(false);
+    const { data: inserted, error } = await (supabase as any)
+      .from("admin_invitations")
+      .insert({
+        email: email.trim().toLowerCase(),
+        permission_level: permissionLevel,
+      })
+      .select("id, invite_token")
+      .single();
 
     if (error) {
-      toast({ title: "Erro ao enviar convite", description: error.message, variant: "destructive" });
+      setSaving(false);
+      const dup = (error as any).code === "23505";
+      toast({
+        title: dup ? "Já existe um convite ativo para este e-mail" : "Erro ao criar convite",
+        description: dup ? "Revogue o convite existente antes de criar um novo." : error.message,
+        variant: "destructive",
+      });
       return;
     }
 
-    toast({ title: "Convite criado" });
+    // Send email with invite link
+    const result = await sendInviteEmail(inserted.id);
+    setSaving(false);
+
+    if (result.ok) {
+      toast({
+        title: "Convite enviado por e-mail",
+        description: `${email.trim()} receberá o link de aceite em instantes.`,
+      });
+    } else {
+      const link = result.acceptUrl || (inserted.invite_token ? buildAcceptUrl(inserted.invite_token) : "");
+      toast({
+        title: "Convite criado, mas o e-mail falhou",
+        description: link
+          ? `Compartilhe este link manualmente: ${link}`
+          : result.error || "Tente reenviar pelo botão na lista.",
+        variant: "destructive",
+      });
+    }
     setEmail("");
     setPermissionLevel("editor");
     fetchData();
+  };
+
+  const resendInvite = async (invitation: AdminInvitation) => {
+    setBusyInviteId(invitation.id);
+    const result = await sendInviteEmail(invitation.id);
+    setBusyInviteId(null);
+    if (result.ok) {
+      toast({ title: "Convite reenviado", description: `Link enviado para ${invitation.email}.` });
+    } else {
+      toast({ title: "Falha ao reenviar", description: result.error, variant: "destructive" });
+    }
+  };
+
+  const copyInviteLink = async (invitation: AdminInvitation) => {
+    if (!invitation.invite_token) {
+      toast({ title: "Link indisponível", variant: "destructive" });
+      return;
+    }
+    const url = buildAcceptUrl(invitation.invite_token);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Link copiado", description: url });
+    } catch {
+      toast({ title: "Copie manualmente", description: url });
+    }
   };
 
   const updateProfile = async (profile: AdminProfile, nextLevel: PermissionLevel) => {
@@ -217,7 +282,7 @@ const AdminManagers = () => {
               ) : (
                 pendingInvites.map((invitation) => (
                   <div key={invitation.id} className="rounded-md border border-border bg-secondary/30 p-4">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="font-medium text-foreground">{invitation.email}</p>
                         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -227,7 +292,21 @@ const AdminManagers = () => {
                           <span>{new Date(invitation.created_at).toLocaleDateString("pt-BR")}</span>
                         </div>
                       </div>
-                      <Button variant="outline" onClick={() => revokeInvitation(invitation.id)}>Revogar</Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="gap-1"
+                          onClick={() => resendInvite(invitation)}
+                          disabled={busyInviteId === invitation.id}
+                        >
+                          <Send className="h-3.5 w-3.5" /> {busyInviteId === invitation.id ? "Enviando..." : "Reenviar"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="gap-1" onClick={() => copyInviteLink(invitation)}>
+                          <Copy className="h-3.5 w-3.5" /> Copiar link
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => revokeInvitation(invitation.id)}>Revogar</Button>
+                      </div>
                     </div>
                   </div>
                 ))

@@ -16,17 +16,39 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const redirectTo = (location.state as { redirectTo?: string } | null)?.redirectTo || "/";
+  const queryRedirect = new URLSearchParams(location.search).get("redirectTo");
+  const redirectTo =
+    queryRedirect ||
+    (location.state as { redirectTo?: string } | null)?.redirectTo ||
+    "/";
 
   useEffect(() => {
+    const tryAcceptPendingInvite = async (userId: string, userEmail: string | null | undefined) => {
+      if (!userEmail) return;
+      try {
+        await (supabase as any).rpc("accept_admin_invitation", {
+          p_user_id: userId,
+          p_email: userEmail,
+        });
+      } catch (err) {
+        console.warn("Failed to auto-accept admin invitation", err);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate(redirectTo, { replace: true });
+      if (session?.user) {
+        tryAcceptPendingInvite(session.user.id, session.user.email).finally(() => {
+          navigate(redirectTo, { replace: true });
+        });
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate(redirectTo, { replace: true });
+      if (session?.user) {
+        tryAcceptPendingInvite(session.user.id, session.user.email).finally(() => {
+          navigate(redirectTo, { replace: true });
+        });
+      }
     });
 
     return () => subscription.unsubscribe();
