@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { sendLovableEmail } from "npm:@lovable.dev/email-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,14 @@ const corsHeaders = {
 const SENDER_DOMAIN = "notify.horensuplementos.com.br";
 const SITE_NAME = "Horen Suplementos";
 const SITE_URL = "https://horensuplementos.com.br";
+
+const emailFailureMessage = (error: unknown) => {
+  const raw = error instanceof Error ? error.message : String(error || "");
+  if (raw.includes("403") || raw.toLowerCase().includes("disabled") || raw.toLowerCase().includes("domain")) {
+    return "O envio de e-mail ainda não está ativo para este domínio. Verifique o DNS em Cloud → Emails e use o link manual enquanto isso.";
+  }
+  return "Não foi possível enviar o e-mail agora. Use o link manual e tente reenviar depois.";
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -106,29 +115,49 @@ Deno.serve(async (req) => {
 
     const text = `Você foi convidado(a) para administrar ${SITE_NAME} como ${levelLabel[invitation.permission_level] || invitation.permission_level}.\n\nAceite o convite acessando: ${acceptUrl}\n\nUse o e-mail ${invitation.email} para fazer login ou criar sua conta.`;
 
-    // Enqueue via the email queue
-    const { data: enqueueResult, error: enqueueErr } = await admin.rpc("enqueue_email", {
-      queue_name: "transactional_emails",
-      payload: {
-        message_id: crypto.randomUUID(),
-        to: invitation.email,
-        from: `${SITE_NAME} <convites@${SENDER_DOMAIN}>`,
-        subject,
-        html,
-        text,
-        label: "admin_invite",
-        sender_domain: SENDER_DOMAIN,
-        purpose: "transactional",
-        idempotency_key: `admin-invite-${invitation.id}-${Date.now()}`,
-      },
-    });
+    const messageId = crypto.randomUUID();
 
-    if (enqueueErr) {
-      console.error("enqueue_email error:", enqueueErr);
-      return new Response(JSON.stringify({ error: "Falha ao enfileirar e-mail.", details: enqueueErr.message, accept_url: acceptUrl }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    try {
+      await sendLovableEmail(
+        {
+          message_id: messageId,
+          to: invitation.email,
+          from: `${SITE_NAME} <convites@${SENDER_DOMAIN}>`,
+          sender_domain: SENDER_DOMAIN,
+          subject,
+          html,
+          text,
+          purpose: "transactional",
+          label: "admin_invite",
+          idempotency_key: `admin-invite-${invitation.id}-${Date.now()}`,
+        },
+        { apiKey: Deno.env.get("LOVABLE_API_KEY")!, sendUrl: Deno.env.get("LOVABLE_SEND_URL") }
+      );
+
+      await admin.from("email_send_log").insert({
+        message_id: messageId,
+        template_name: "admin_invite",
+        recipient_email: invitation.email,
+        status: "sent",
+        metadata: { invitation_id: invitation.id, permission_level: invitation.permission_level },
+      });
+
+      return new Response(JSON.stringify({ success: true, accept_url: acceptUrl }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch (emailErr) {
+      const rawError = emailErr instanceof Error ? emailErr.message : String(emailErr || "Erro desconhecido");
+      console.error("sendLovableEmail admin invite error:", rawError);
+
+      await admin.from("email_send_log").insert({
+        message_id: messageId,
+        template_name: "admin_invite",
+        recipient_email: invitation.email,
+        status: "failed",
+        error_message: rawError.slice(0, 1000),
+        metadata: { invitation_id: invitation.id, permission_level: invitation.permission_level },
+      });
+
+      return new Response(JSON.stringify({ success: false, error: emailFailureMessage(emailErr), accept_url: acceptUrl }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    return new Response(JSON.stringify({ success: true, accept_url: acceptUrl, queued: enqueueResult }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("send-admin-invite error:", err);
     const msg = err instanceof Error ? err.message : "Erro desconhecido";
