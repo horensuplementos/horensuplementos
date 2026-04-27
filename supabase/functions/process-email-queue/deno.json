@@ -1,7 +1,1 @@
-{
-  "nodeModulesDir": "auto",
-  "compilerOptions": {
-    "noImplicitAny": false,
-    "strict": false
-  }
-}
+{}
