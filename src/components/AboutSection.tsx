@@ -34,16 +34,13 @@ const AboutSection = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <p className="text-sm font-body tracking-[0.3em] uppercase text-muted-foreground mb-4">
-            Sobre a Horen
-          </p>
+          <p className="text-sm font-body tracking-[0.3em] uppercase text-muted-foreground mb-4">Sobre a Horen</p>
           <h2 className="font-heading text-4xl md:text-5xl font-bold text-foreground mb-6">
             Excelência em cada detalhe
           </h2>
           <p className="text-muted-foreground font-body max-w-2xl mx-auto text-base leading-relaxed">
-            A Horen é uma marca de suplementos de alta qualidade, com matéria prima
-            selecionada e formulações eficientes testadas para ganho de resultados.
-            Produtos para todas as pessoas que buscam uma melhora no estilo de vida.
+            A Horen é uma marca de creatina de alta qualidade, com matéria prima selecionada e formulações eficientes
+            testadas para ganho de resultados. Produtos para todas as pessoas que buscam uma melhora no estilo de vida.
           </p>
         </motion.div>
 
@@ -58,12 +55,8 @@ const AboutSection = () => {
               className="text-center p-8 rounded-2xl bg-secondary border border-border"
             >
               <item.icon className="w-8 h-8 text-primary mx-auto mb-4" />
-              <h3 className="font-heading text-lg font-semibold text-foreground mb-2">
-                {item.title}
-              </h3>
-              <p className="text-sm text-muted-foreground font-body leading-relaxed">
-                {item.description}
-              </p>
+              <h3 className="font-heading text-lg font-semibold text-foreground mb-2">{item.title}</h3>
+              <p className="text-sm text-muted-foreground font-body leading-relaxed">{item.description}</p>
             </motion.div>
           ))}
         </div>
