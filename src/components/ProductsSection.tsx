@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useCart, type CartProduct } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
+import { useSiteSection } from "@/contexts/SiteContentContext";
+import { getSectionText } from "@/lib/siteContent";
 
 type Product = Tables<"products">;
 
@@ -14,6 +16,11 @@ const ProductsSection = () => {
   const [loading, setLoading] = useState(true);
   const { addItem } = useCart();
   const navigate = useNavigate();
+  const { section } = useSiteSection("products_section");
+  const text = getSectionText(section, {
+    subtitle: "Nossos Produtos",
+    title: "Linha Premium",
+  });
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -50,10 +57,10 @@ const ProductsSection = () => {
           className="text-center mb-16"
         >
           <p className="text-sm font-body tracking-[0.3em] uppercase text-muted-foreground mb-4">
-            Nossos Produtos
+            {text.subtitle}
           </p>
           <h2 className="font-heading text-4xl md:text-5xl font-bold text-foreground">
-            Linha Premium
+            {text.title}
           </h2>
         </motion.div>
 
