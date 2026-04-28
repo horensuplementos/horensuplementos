@@ -5,8 +5,19 @@ import { Button } from "@/components/ui/button";
 import banner1 from "@/assets/banner-1.jpg";
 import banner2 from "@/assets/banner-2.jpg";
 import banner3 from "@/assets/banner-3.jpg";
+import { useSiteSection } from "@/contexts/SiteContentContext";
+import { getSectionItems } from "@/lib/siteContent";
 
-const slides = [
+type Slide = {
+  title: string;
+  subtitle: string;
+  description: string;
+  cta: string;
+  link: string;
+  image: string;
+};
+
+const fallbackSlides: Slide[] = [
   {
     title: "Whey Isolado Horen",
     subtitle: "LANÇAMENTO",
@@ -34,15 +45,25 @@ const slides = [
 ];
 
 const HeroBanner = () => {
+  const { section } = useSiteSection("hero_banner");
+  const rawItems = getSectionItems<any>(section, fallbackSlides as any);
+  const slides: Slide[] = rawItems.map((item: any, idx: number) => ({
+    title: item.title || fallbackSlides[idx % fallbackSlides.length].title,
+    subtitle: item.subtitle || fallbackSlides[idx % fallbackSlides.length].subtitle,
+    description: item.description || fallbackSlides[idx % fallbackSlides.length].description,
+    cta: item.cta || item.cta_label || "Comprar agora",
+    link: item.link || item.cta_link || "#produtos",
+    image: item.image || item.image_url || fallbackSlides[idx % fallbackSlides.length].image,
+  }));
   const [current, setCurrent] = useState(0);
 
   const next = useCallback(() => {
     setCurrent((prev) => (prev + 1) % slides.length);
-  }, []);
+  }, [slides.length]);
 
   const prev = useCallback(() => {
     setCurrent((p) => (p - 1 + slides.length) % slides.length);
-  }, []);
+  }, [slides.length]);
 
   useEffect(() => {
     const timer = setInterval(next, 5000);

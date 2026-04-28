@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useSiteSection } from "@/contexts/SiteContentContext";
+import { getSectionItems } from "@/lib/siteContent";
 
-const promos = [
+const fallbackPromos = [
   { text: "🔥 LANÇAMENTO — Whey Isolado Horen com 30% OFF", link: "#produtos" },
   { text: "🎁 COMBO PERFORMANCE — Whey + Creatina por R$ 349,90", link: "#produtos" },
   { text: "🚚 FRETE GRÁTIS em compras acima de R$ 299", link: "#produtos" },
@@ -10,14 +12,22 @@ const promos = [
 ];
 
 const PromoBanner = () => {
+  const { section } = useSiteSection("promo_banner");
+  const promos = getSectionItems<{ text: string; link: string }>(section, fallbackPromos).map((p: any) => ({
+    text: p.text || p.title || "",
+    link: p.link || p.cta_link || "#produtos",
+  }));
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
+    if (promos.length === 0) return;
     const timer = setInterval(() => {
       setCurrent((prev) => (prev + 1) % promos.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [promos.length]);
+
+  if (promos.length === 0) return null;
 
   return (
     <div className="bg-primary text-primary-foreground relative overflow-hidden">
