@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { FilePenLine, RefreshCw, Save } from "lucide-react";
+import { FilePenLine, RefreshCw, Save, Upload } from "lucide-react";
+import { useSiteContent } from "@/contexts/SiteContentContext";
 
 type SiteSection = {
   id: string;
@@ -24,10 +25,12 @@ type SiteSection = {
 
 const AdminContentEditor = () => {
   const { toast } = useToast();
+  const { refreshSections } = useSiteContent();
   const [sections, setSections] = useState<SiteSection[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     title: "",
     subtitle: "",
@@ -128,6 +131,28 @@ const AdminContentEditor = () => {
 
     toast({ title: "Conteúdo atualizado" });
     fetchSections();
+    refreshSections();
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `sections/${selectedSection?.section_key || "geral"}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("site-assets").upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from("site-assets").getPublicUrl(path);
+      setForm((prev) => ({ ...prev, image_url: data.publicUrl }));
+      toast({ title: "Imagem enviada", description: "Lembre-se de salvar a seção." });
+    } catch (err: any) {
+      toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -232,6 +257,26 @@ const AdminContentEditor = () => {
                   <div className="space-y-2">
                     <label className="text-sm text-muted-foreground">URL da imagem</label>
                     <Input value={form.image_url} onChange={(e) => setForm((prev) => ({ ...prev, image_url: e.target.value }))} />
+                    <div className="flex items-center gap-3">
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-xs text-foreground hover:bg-secondary/70">
+                        <Upload className="h-4 w-4" />
+                        {uploading ? "Enviando..." : "Enviar imagem do computador"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploading}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageUpload(file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      {form.image_url && (
+                        <img src={form.image_url} alt="preview" className="h-12 w-12 rounded object-cover border border-border" />
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-2">
