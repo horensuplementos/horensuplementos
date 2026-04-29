@@ -5,7 +5,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, ShoppingBag, Loader2, Truck } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Loader2, Truck, Plus, Pencil, Trash2, MapPin, Star, Check } from "lucide-react";
 import Header from "@/components/Header";
 import CartDrawer from "@/components/CartDrawer";
 
@@ -26,6 +26,20 @@ interface AddressForm {
   city: string;
   state: string;
   zip_code: string;
+}
+
+interface SavedAddress {
+  id: string;
+  label: string | null;
+  recipient_name: string | null;
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  is_default: boolean;
 }
 
 interface CouponValidationResult {
@@ -63,6 +77,12 @@ const Checkout = () => {
     state: "",
     zip_code: "",
   });
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [addressLabel, setAddressLabel] = useState<string>("");
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
   const [loadingShipping, setLoadingShipping] = useState(false);
@@ -88,6 +108,160 @@ const Checkout = () => {
     : appliedCoupon?.discount_amount || 0;
   const finalTotal = Math.max(subtotal + shippingTotal - discountAmount, 0);
 
+  const loadSavedAddresses = async (userId: string, autoSelectId?: string | null) => {
+    const { data, error } = await supabase
+      .from("user_addresses" as any)
+      .select("*")
+      .eq("user_id", userId)
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+    const list = (data || []) as unknown as SavedAddress[];
+    setSavedAddresses(list);
+
+    if (list.length === 0) {
+      setSelectedAddressId(null);
+      setShowAddressForm(true);
+      return;
+    }
+
+    const target =
+      (autoSelectId && list.find((a) => a.id === autoSelectId)) ||
+      list.find((a) => a.is_default) ||
+      list[0];
+
+    if (target) selectAddress(target);
+  };
+
+  const selectAddress = (a: SavedAddress) => {
+    setSelectedAddressId(a.id);
+    setShowAddressForm(false);
+    setEditingAddressId(null);
+    setAddress({
+      street: a.street,
+      number: a.number,
+      complement: a.complement || "",
+      neighborhood: a.neighborhood,
+      city: a.city,
+      state: a.state,
+      zip_code: a.zip_code,
+    });
+    setShippingOptions([]);
+    setSelectedShipping(null);
+  };
+
+  const startNewAddress = () => {
+    setEditingAddressId(null);
+    setSelectedAddressId(null);
+    setAddressLabel("");
+    setAddress({
+      street: "", number: "", complement: "",
+      neighborhood: "", city: "", state: "", zip_code: "",
+    });
+    setShippingOptions([]);
+    setSelectedShipping(null);
+    setShowAddressForm(true);
+  };
+
+  const startEditAddress = (a: SavedAddress) => {
+    setEditingAddressId(a.id);
+    setSelectedAddressId(a.id);
+    setAddressLabel(a.label || "");
+    setAddress({
+      street: a.street,
+      number: a.number,
+      complement: a.complement || "",
+      neighborhood: a.neighborhood,
+      city: a.city,
+      state: a.state,
+      zip_code: a.zip_code,
+    });
+    setShowAddressForm(true);
+  };
+
+  const saveAddress = async () => {
+    if (!user) return;
+    const cleanZip = address.zip_code.replace(/\D/g, "");
+    if (!address.street.trim() || !address.number.trim() || !address.neighborhood.trim() ||
+        !address.city.trim() || !address.state.trim() || cleanZip.length !== 8) {
+      toast({ title: "Preencha o endereço completo", variant: "destructive" });
+      return;
+    }
+
+    setSavingAddress(true);
+    try {
+      const payload: any = {
+        user_id: user.id,
+        label: addressLabel.trim() || null,
+        street: address.street.trim(),
+        number: address.number.trim(),
+        complement: address.complement.trim() || null,
+        neighborhood: address.neighborhood.trim(),
+        city: address.city.trim(),
+        state: address.state.trim(),
+        zip_code: address.zip_code.trim(),
+        is_default: savedAddresses.length === 0,
+      };
+
+      let savedId: string | null = null;
+      if (editingAddressId) {
+        const { error } = await supabase
+          .from("user_addresses" as any)
+          .update(payload)
+          .eq("id", editingAddressId);
+        if (error) throw error;
+        savedId = editingAddressId;
+      } else {
+        const { data, error } = await supabase
+          .from("user_addresses" as any)
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        savedId = (data as any)?.id || null;
+      }
+
+      toast({ title: editingAddressId ? "Endereço atualizado" : "Endereço salvo" });
+      await loadSavedAddresses(user.id, savedId);
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar endereço", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  const deleteAddress = async (id: string) => {
+    if (!confirm("Excluir este endereço?")) return;
+    const { error } = await supabase.from("user_addresses" as any).delete().eq("id", id);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Endereço excluído" });
+    if (selectedAddressId === id) {
+      setSelectedAddressId(null);
+      setAddress({ street: "", number: "", complement: "", neighborhood: "", city: "", state: "", zip_code: "" });
+    }
+    if (user) await loadSavedAddresses(user.id);
+  };
+
+  const setAsDefault = async (id: string) => {
+    const { error } = await supabase
+      .from("user_addresses" as any)
+      .update({ is_default: true })
+      .eq("id", id);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Endereço padrão atualizado" });
+    if (user) await loadSavedAddresses(user.id, id);
+  };
+
   useEffect(() => {
     const loadUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -112,16 +286,9 @@ const Checkout = () => {
           phone: (profile as any).phone || "",
           cpf: (profile as any).cpf || "",
         }));
-        setAddress({
-          street: (profile as any).street || "",
-          number: (profile as any).number || "",
-          complement: (profile as any).complement || "",
-          neighborhood: (profile as any).neighborhood || "",
-          city: (profile as any).city || "",
-          state: (profile as any).state || "",
-          zip_code: (profile as any).zip_code || "",
-        });
       }
+
+      await loadSavedAddresses(session.user.id);
     };
     loadUser();
   }, [navigate, toast]);
@@ -244,6 +411,11 @@ const Checkout = () => {
     e.preventDefault();
     if (items.length === 0 || !selectedShipping) return;
 
+    if (!selectedAddressId || showAddressForm) {
+      toast({ title: "Selecione um endereço de entrega", variant: "destructive" });
+      return;
+    }
+
     const normalizedName = form.name.replace(/\s+/g, " ").trim();
     const normalizedEmail = form.email.trim();
     const normalizedCpf = form.cpf.replace(/\D/g, "");
@@ -310,13 +482,6 @@ const Checkout = () => {
           name: form.name,
           phone: form.phone,
           cpf: form.cpf,
-          street: address.street,
-          number: address.number,
-          complement: address.complement,
-          neighborhood: address.neighborhood,
-          city: address.city,
-          state: address.state,
-          zip_code: address.zip_code,
         } as any)
         .eq("user_id", user.id);
 
@@ -433,7 +598,127 @@ const Checkout = () => {
 
               {/* Endereço */}
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-                <h2 className="font-heading text-lg font-semibold text-foreground">Endereço de Entrega</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-heading text-lg font-semibold text-foreground">Endereço de Entrega</h2>
+                  {savedAddresses.length > 0 && !showAddressForm && (
+                    <Button type="button" variant="outline" size="sm" onClick={startNewAddress} className="rounded-xl">
+                      <Plus className="w-4 h-4" /> Novo endereço
+                    </Button>
+                  )}
+                </div>
+
+                {savedAddresses.length > 0 && (
+                  <div className="space-y-2">
+                    {savedAddresses.map((a) => {
+                      const isSelected = selectedAddressId === a.id && !showAddressForm;
+                      return (
+                        <div
+                          key={a.id}
+                          className={`p-4 rounded-xl border transition-all ${
+                            isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => selectAddress(a)}
+                              className="flex-1 text-left flex items-start gap-3"
+                            >
+                              <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                isSelected ? "border-primary bg-primary" : "border-border"
+                              }`}>
+                                {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-body text-sm font-semibold text-foreground flex items-center gap-1">
+                                    <MapPin className="w-3.5 h-3.5" />
+                                    {a.label || "Endereço"}
+                                  </span>
+                                  {a.is_default && (
+                                    <span className="text-[10px] uppercase tracking-wider font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+                                      <Star className="w-3 h-3" /> Padrão
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1 break-words">
+                                  {a.street}, {a.number}{a.complement ? ` (${a.complement})` : ""} — {a.neighborhood}, {a.city}/{a.state} · CEP {a.zip_code}
+                                </p>
+                              </div>
+                            </button>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {!a.is_default && (
+                                <button
+                                  type="button"
+                                  onClick={() => setAsDefault(a.id)}
+                                  className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                                  title="Tornar padrão"
+                                >
+                                  <Star className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => startEditAddress(a)}
+                                className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                                title="Editar"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteAddress(a.id)}
+                                className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                title="Excluir"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {!showAddressForm && savedAddresses.length === 0 && (
+                  <Button type="button" variant="outline" onClick={startNewAddress} className="w-full rounded-xl h-12">
+                    <Plus className="w-4 h-4" /> Adicionar endereço
+                  </Button>
+                )}
+
+                {showAddressForm && (
+                  <div className="space-y-4 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-foreground">
+                        {editingAddressId ? "Editar endereço" : "Novo endereço"}
+                      </p>
+                      {savedAddresses.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddressForm(false);
+                            setEditingAddressId(null);
+                            const fallback = savedAddresses.find((a) => a.is_default) || savedAddresses[0];
+                            if (fallback) selectAddress(fallback);
+                          }}
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-body text-muted-foreground mb-1 block">
+                        Apelido <span className="text-muted-foreground/70">(ex.: Casa, Trabalho)</span>
+                      </label>
+                      <input
+                        className={inputClass}
+                        value={addressLabel}
+                        onChange={(e) => setAddressLabel(e.target.value)}
+                        placeholder="Apelido do endereço"
+                      />
+                    </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2">
                     <label className="text-sm font-body text-muted-foreground mb-1 block">CEP *</label>
@@ -451,17 +736,7 @@ const Checkout = () => {
                       required
                     />
                   </div>
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full h-[46px] rounded-xl"
-                      onClick={calculateShipping}
-                      disabled={loadingShipping}
-                    >
-                      {loadingShipping ? <Loader2 className="w-4 h-4 animate-spin" /> : "Calcular Frete"}
-                    </Button>
-                  </div>
+                  <div className="flex items-end" />
                 </div>
                 <div>
                   <label className="text-sm font-body text-muted-foreground mb-1 block">Rua *</label>
@@ -532,6 +807,31 @@ const Checkout = () => {
                     </select>
                   </div>
                 </div>
+                    <Button
+                      type="button"
+                      onClick={saveAddress}
+                      disabled={savingAddress}
+                      className="w-full rounded-xl h-11"
+                    >
+                      {savingAddress ? <Loader2 className="w-4 h-4 animate-spin" /> : (editingAddressId ? "Salvar alterações" : "Salvar endereço")}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Calcular frete (sempre visível quando há endereço selecionado) */}
+                {!showAddressForm && selectedAddressId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 rounded-xl"
+                    onClick={calculateShipping}
+                    disabled={loadingShipping}
+                  >
+                    {loadingShipping ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                      <><Truck className="w-4 h-4" /> Calcular Frete</>
+                    )}
+                  </Button>
+                )}
               </div>
 
               {/* Opções de frete */}
