@@ -18,6 +18,7 @@ import AdminCoupons from "./pages/admin/AdminCoupons.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminOrders from "./pages/admin/AdminOrders.tsx";
 import AdminContentEditor from "./pages/admin/AdminContentEditor.tsx";
+import AdminBlog from "./pages/admin/AdminBlog.tsx";
 import AdminManagers from "./pages/admin/AdminManagers.tsx";
 import AdminMetrics from "./pages/admin/AdminMetrics.tsx";
 import AcceptInvite from "./pages/AcceptInvite.tsx";
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/admin/produtos" element={<AdminProducts />} />
                 <Route path="/admin/pedidos" element={<AdminOrders />} />
                 <Route path="/admin/editor" element={<AdminContentEditor />} />
+                <Route path="/admin/blog" element={<AdminBlog />} />
                 <Route path="/admin/administradores" element={<AdminManagers />} />
                 <Route path="/admin/metricas" element={<AdminMetrics />} />
               </Route>
