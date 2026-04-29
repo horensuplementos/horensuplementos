@@ -495,6 +495,17 @@ const Checkout = () => {
                     />
                   </div>
                 </div>
+                <div>
+                  <label className="text-sm font-body text-muted-foreground mb-1 block">
+                    Complemento <span className="text-muted-foreground/70">(opcional)</span>
+                  </label>
+                  <input
+                    className={inputClass}
+                    value={address.complement}
+                    onChange={(e) => setAddress({ ...address, complement: e.target.value })}
+                    placeholder="Apartamento, bloco, casa, referência..."
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-body text-muted-foreground mb-1 block">Cidade *</label>
