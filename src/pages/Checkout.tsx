@@ -5,7 +5,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, ShoppingBag, Loader2, Truck } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Loader2, Truck, Plus, Pencil, Trash2, MapPin, Star, Check } from "lucide-react";
 import Header from "@/components/Header";
 import CartDrawer from "@/components/CartDrawer";
 
@@ -26,6 +26,20 @@ interface AddressForm {
   city: string;
   state: string;
   zip_code: string;
+}
+
+interface SavedAddress {
+  id: string;
+  label: string | null;
+  recipient_name: string | null;
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  is_default: boolean;
 }
 
 interface CouponValidationResult {
@@ -63,6 +77,12 @@ const Checkout = () => {
     state: "",
     zip_code: "",
   });
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [addressLabel, setAddressLabel] = useState<string>("");
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
   const [loadingShipping, setLoadingShipping] = useState(false);
@@ -88,6 +108,160 @@ const Checkout = () => {
     : appliedCoupon?.discount_amount || 0;
   const finalTotal = Math.max(subtotal + shippingTotal - discountAmount, 0);
 
+  const loadSavedAddresses = async (userId: string, autoSelectId?: string | null) => {
+    const { data, error } = await supabase
+      .from("user_addresses" as any)
+      .select("*")
+      .eq("user_id", userId)
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+    const list = (data || []) as unknown as SavedAddress[];
+    setSavedAddresses(list);
+
+    if (list.length === 0) {
+      setSelectedAddressId(null);
+      setShowAddressForm(true);
+      return;
+    }
+
+    const target =
+      (autoSelectId && list.find((a) => a.id === autoSelectId)) ||
+      list.find((a) => a.is_default) ||
+      list[0];
+
+    if (target) selectAddress(target);
+  };
+
+  const selectAddress = (a: SavedAddress) => {
+    setSelectedAddressId(a.id);
+    setShowAddressForm(false);
+    setEditingAddressId(null);
+    setAddress({
+      street: a.street,
+      number: a.number,
+      complement: a.complement || "",
+      neighborhood: a.neighborhood,
+      city: a.city,
+      state: a.state,
+      zip_code: a.zip_code,
+    });
+    setShippingOptions([]);
+    setSelectedShipping(null);
+  };
+
+  const startNewAddress = () => {
+    setEditingAddressId(null);
+    setSelectedAddressId(null);
+    setAddressLabel("");
+    setAddress({
+      street: "", number: "", complement: "",
+      neighborhood: "", city: "", state: "", zip_code: "",
+    });
+    setShippingOptions([]);
+    setSelectedShipping(null);
+    setShowAddressForm(true);
+  };
+
+  const startEditAddress = (a: SavedAddress) => {
+    setEditingAddressId(a.id);
+    setSelectedAddressId(a.id);
+    setAddressLabel(a.label || "");
+    setAddress({
+      street: a.street,
+      number: a.number,
+      complement: a.complement || "",
+      neighborhood: a.neighborhood,
+      city: a.city,
+      state: a.state,
+      zip_code: a.zip_code,
+    });
+    setShowAddressForm(true);
+  };
+
+  const saveAddress = async () => {
+    if (!user) return;
+    const cleanZip = address.zip_code.replace(/\D/g, "");
+    if (!address.street.trim() || !address.number.trim() || !address.neighborhood.trim() ||
+        !address.city.trim() || !address.state.trim() || cleanZip.length !== 8) {
+      toast({ title: "Preencha o endereço completo", variant: "destructive" });
+      return;
+    }
+
+    setSavingAddress(true);
+    try {
+      const payload: any = {
+        user_id: user.id,
+        label: addressLabel.trim() || null,
+        street: address.street.trim(),
+        number: address.number.trim(),
+        complement: address.complement.trim() || null,
+        neighborhood: address.neighborhood.trim(),
+        city: address.city.trim(),
+        state: address.state.trim(),
+        zip_code: address.zip_code.trim(),
+        is_default: savedAddresses.length === 0,
+      };
+
+      let savedId: string | null = null;
+      if (editingAddressId) {
+        const { error } = await supabase
+          .from("user_addresses" as any)
+          .update(payload)
+          .eq("id", editingAddressId);
+        if (error) throw error;
+        savedId = editingAddressId;
+      } else {
+        const { data, error } = await supabase
+          .from("user_addresses" as any)
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        savedId = (data as any)?.id || null;
+      }
+
+      toast({ title: editingAddressId ? "Endereço atualizado" : "Endereço salvo" });
+      await loadSavedAddresses(user.id, savedId);
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar endereço", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  const deleteAddress = async (id: string) => {
+    if (!confirm("Excluir este endereço?")) return;
+    const { error } = await supabase.from("user_addresses" as any).delete().eq("id", id);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Endereço excluído" });
+    if (selectedAddressId === id) {
+      setSelectedAddressId(null);
+      setAddress({ street: "", number: "", complement: "", neighborhood: "", city: "", state: "", zip_code: "" });
+    }
+    if (user) await loadSavedAddresses(user.id);
+  };
+
+  const setAsDefault = async (id: string) => {
+    const { error } = await supabase
+      .from("user_addresses" as any)
+      .update({ is_default: true })
+      .eq("id", id);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Endereço padrão atualizado" });
+    if (user) await loadSavedAddresses(user.id, id);
+  };
+
   useEffect(() => {
     const loadUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -112,16 +286,9 @@ const Checkout = () => {
           phone: (profile as any).phone || "",
           cpf: (profile as any).cpf || "",
         }));
-        setAddress({
-          street: (profile as any).street || "",
-          number: (profile as any).number || "",
-          complement: (profile as any).complement || "",
-          neighborhood: (profile as any).neighborhood || "",
-          city: (profile as any).city || "",
-          state: (profile as any).state || "",
-          zip_code: (profile as any).zip_code || "",
-        });
       }
+
+      await loadSavedAddresses(session.user.id);
     };
     loadUser();
   }, [navigate, toast]);
