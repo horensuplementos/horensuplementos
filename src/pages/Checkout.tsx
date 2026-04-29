@@ -21,6 +21,7 @@ interface ShippingOption {
 interface AddressForm {
   street: string;
   number: string;
+  complement: string;
   neighborhood: string;
   city: string;
   state: string;
@@ -56,6 +57,7 @@ const Checkout = () => {
   const [address, setAddress] = useState<AddressForm>({
     street: "",
     number: "",
+    complement: "",
     neighborhood: "",
     city: "",
     state: "",
@@ -113,6 +115,7 @@ const Checkout = () => {
         setAddress({
           street: (profile as any).street || "",
           number: (profile as any).number || "",
+          complement: (profile as any).complement || "",
           neighborhood: (profile as any).neighborhood || "",
           city: (profile as any).city || "",
           state: (profile as any).state || "",
@@ -262,7 +265,8 @@ const Checkout = () => {
 
     setLoading(true);
 
-    const fullAddress = `${address.street}, ${address.number} - ${address.neighborhood}, ${address.city} - ${address.state}, CEP: ${address.zip_code}`;
+    const complementPart = address.complement ? ` (${address.complement})` : "";
+    const fullAddress = `${address.street}, ${address.number}${complementPart} - ${address.neighborhood}, ${address.city} - ${address.state}, CEP: ${address.zip_code}`;
 
     try {
       const { data: order, error: orderError } = await supabase
@@ -308,6 +312,7 @@ const Checkout = () => {
           cpf: form.cpf,
           street: address.street,
           number: address.number,
+          complement: address.complement,
           neighborhood: address.neighborhood,
           city: address.city,
           state: address.state,
