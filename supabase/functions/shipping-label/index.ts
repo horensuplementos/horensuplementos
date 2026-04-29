@@ -207,14 +207,49 @@ Deno.serve(async (req) => {
       const res = await fetchWithRetry(`${MELHOR_ENVIO_BASE}/shipment/print`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ orders: order_ids }),
+        body: JSON.stringify({ mode: 'public', orders: order_ids }),
       })
       const data = await res.json()
       if (!res.ok) {
         console.error('Print error:', JSON.stringify(data))
-        return json({ error: 'Erro ao imprimir etiqueta', details: data }, 502)
+        const rawMsg = (data?.message || '') as string
+        const isNotReleased = /E-PRT-0002|não é\(são\) valida|n[aã]o[ ]?[ée] v[aá]lida|not released|não pago/i.test(
+          rawMsg + ' ' + JSON.stringify(data?.context || {})
+        )
+        return json({
+          error: isNotReleased
+            ? 'A etiqueta ainda não está liberada para impressão. Pague a etiqueta no painel do Melhor Envio (Carrinho → Pagar) e tente novamente.'
+            : (rawMsg || 'Erro ao imprimir etiqueta'),
+          code: isNotReleased ? 'NOT_RELEASED' : undefined,
+          details: data,
+        }, 502)
       }
-      return json({ success: true, data })
+      // Melhor Envio returns { url: "https://..." } pointing to the PDF
+      const pdfUrl = data?.url || data?.data?.url || data?.link || data?.data?.link || null
+      return json({ success: true, url: pdfUrl, data })
+    }
+
+    // Status check (used to know if label is paid/released before printing)
+    if (action === 'status') {
+      if (!order_ids?.length) return json({ error: 'order_ids obrigatório' }, 400)
+      const id = order_ids[0]
+      const res = await fetchWithRetry(`${MELHOR_ENVIO_BASE}/shipment/${id}`, {
+        method: 'GET',
+        headers,
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        return json({ error: 'Erro ao consultar etiqueta', details: data }, 502)
+      }
+      // Status possíveis: pending, released, posted, delivered, canceled, etc.
+      return json({
+        success: true,
+        status: data?.status || null,
+        protocol: data?.protocol || null,
+        tracking: data?.tracking || null,
+        printable: data?.status === 'released' || data?.status === 'posted' || data?.status === 'delivered',
+        data,
+      })
     }
 
     // 5. Tracking
