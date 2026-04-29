@@ -411,6 +411,11 @@ const Checkout = () => {
     e.preventDefault();
     if (items.length === 0 || !selectedShipping) return;
 
+    if (!selectedAddressId || showAddressForm) {
+      toast({ title: "Selecione um endereço de entrega", variant: "destructive" });
+      return;
+    }
+
     const normalizedName = form.name.replace(/\s+/g, " ").trim();
     const normalizedEmail = form.email.trim();
     const normalizedCpf = form.cpf.replace(/\D/g, "");
@@ -477,13 +482,6 @@ const Checkout = () => {
           name: form.name,
           phone: form.phone,
           cpf: form.cpf,
-          street: address.street,
-          number: address.number,
-          complement: address.complement,
-          neighborhood: address.neighborhood,
-          city: address.city,
-          state: address.state,
-          zip_code: address.zip_code,
         } as any)
         .eq("user_id", user.id);
 
