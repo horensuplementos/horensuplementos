@@ -46,7 +46,7 @@ function isValidDocument(doc?: string): boolean {
 }
 
 const BodySchema = z.object({
-  action: z.enum(['add_to_cart', 'generate', 'checkout', 'print', 'tracking']),
+  action: z.enum(['add_to_cart', 'generate', 'checkout', 'print', 'tracking', 'status']),
   // For add_to_cart
   shipment: z.object({
     service: z.number(),
