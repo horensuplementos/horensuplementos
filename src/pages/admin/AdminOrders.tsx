@@ -259,16 +259,53 @@ const AdminOrders = () => {
 
     try {
       setShippingLoading(order.id);
+
+      // 1) Verifica status da etiqueta no Melhor Envio
+      const { data: statusData } = await supabase.functions.invoke("shipping-label", {
+        body: { action: "status", order_ids: [order.shipping_order_id] },
+      });
+
+      if (statusData && statusData.printable === false) {
+        toast({
+          title: "Etiqueta ainda não paga",
+          description:
+            "Acesse melhorenvio.com.br → Carrinho/Pedidos e finalize o pagamento da etiqueta. Depois volte aqui e clique em Imprimir novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 2) Solicita o PDF da etiqueta
       const { data, error } = await supabase.functions.invoke("shipping-label", {
         body: { action: "print", order_ids: [order.shipping_order_id] },
       });
 
-      if (error) throw error;
+      if (error) {
+        const msg = await extractFunctionErrorMessage(error, "Erro ao abrir etiqueta");
+        throw new Error(msg);
+      }
+      if (data?.error) {
+        throw new Error(typeof data.error === "string" ? data.error : "Erro ao abrir etiqueta");
+      }
 
-      const printUrl = data?.data?.url || data?.data?.link || data?.data?.preview_url;
+      const printUrl = data?.url || data?.data?.url || data?.data?.link || data?.data?.preview_url;
       if (!printUrl) throw new Error("A etiqueta foi gerada, mas o link de impressão não foi retornado.");
 
-      window.open(printUrl, "_blank", "noopener,noreferrer");
+      // 3) Abre pop-up com o PDF e dispara a caixa de impressão automaticamente
+      const popup = window.open("", "etiqueta", "width=900,height=720,noopener,noreferrer");
+      if (!popup) {
+        // Fallback: navegador bloqueou pop-up
+        window.open(printUrl, "_blank", "noopener,noreferrer");
+      } else {
+        popup.document.write(`<!doctype html><html><head><title>Etiqueta de envio</title>
+          <style>html,body{margin:0;height:100%;background:#111}iframe{border:0;width:100%;height:100%}</style>
+          </head><body>
+          <iframe src="${printUrl}" onload="setTimeout(()=>{try{this.contentWindow.focus();this.contentWindow.print();}catch(e){}},700)"></iframe>
+          </body></html>`);
+        popup.document.close();
+      }
+
+      toast({ title: "Etiqueta pronta", description: "A janela de impressão foi aberta." });
     } catch (err: any) {
       toast({ title: "Erro ao abrir etiqueta", description: err.message, variant: "destructive" });
     } finally {
