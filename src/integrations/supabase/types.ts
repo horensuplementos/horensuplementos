@@ -529,6 +529,7 @@ export type Database = {
         Row: {
           address: string | null
           city: string | null
+          complement: string | null
           cpf: string | null
           created_at: string
           id: string
@@ -545,6 +546,7 @@ export type Database = {
         Insert: {
           address?: string | null
           city?: string | null
+          complement?: string | null
           cpf?: string | null
           created_at?: string
           id?: string
@@ -561,6 +563,7 @@ export type Database = {
         Update: {
           address?: string | null
           city?: string | null
+          complement?: string | null
           cpf?: string | null
           created_at?: string
           id?: string
