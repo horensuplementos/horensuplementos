@@ -7,3 +7,5 @@ project_id = "ycmhgmxstrjoiysbbpxh"
     verify_jwt = true
   [functions.send-admin-invite]
     verify_jwt = true
+  [functions.bling-oauth-callback]
+    verify_jwt = false

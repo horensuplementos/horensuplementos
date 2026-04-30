@@ -86,6 +86,42 @@ export type Database = {
         }
         Relationships: []
       }
+      bling_credentials: {
+        Row: {
+          access_token: string | null
+          client_id: string | null
+          client_secret: string | null
+          connected_by: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          refresh_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          client_id?: string | null
+          client_secret?: string | null
+          connected_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          refresh_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          client_id?: string | null
+          client_secret?: string | null
+          connected_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          refresh_token?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       blog_posts: {
         Row: {
           category: string | null
@@ -385,6 +421,7 @@ export type Database = {
           id: string
           invoice_key: string | null
           invoice_number: string | null
+          invoice_pdf_url: string | null
           payment_id: string | null
           payment_method: string | null
           shipping_order_id: string | null
@@ -415,6 +452,7 @@ export type Database = {
           id?: string
           invoice_key?: string | null
           invoice_number?: string | null
+          invoice_pdf_url?: string | null
           payment_id?: string | null
           payment_method?: string | null
           shipping_order_id?: string | null
@@ -445,6 +483,7 @@ export type Database = {
           id?: string
           invoice_key?: string | null
           invoice_number?: string | null
+          invoice_pdf_url?: string | null
           payment_id?: string | null
           payment_method?: string | null
           shipping_order_id?: string | null

@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ChevronDown, ChevronUp, Package, Truck, Loader2, Copy, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Package, Truck, Loader2, Copy, Trash2, FileText, Printer } from "lucide-react";
 
 const statusOptions = ["pendente", "pago", "enviado", "entregue", "cancelado"];
 const statusColors: Record<string, string> = {
@@ -41,6 +41,7 @@ const AdminOrders = () => {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<Record<string, any[]>>({});
   const [shippingLoading, setShippingLoading] = useState<string | null>(null);
+  const [invoiceLoading, setInvoiceLoading] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<any | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const { toast } = useToast();
@@ -316,6 +317,49 @@ const AdminOrders = () => {
   const formatPrice = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+  const issueInvoice = async (order: any) => {
+    setInvoiceLoading(order.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("bling-invoice", {
+        body: { action: "issue", order_id: order.id },
+      });
+      if (error) throw new Error(await extractFunctionErrorMessage(error, "Falha ao emitir NF-e"));
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast({ title: "NF-e emitida", description: `Número ${(data as any).numero || ""}` });
+      fetchOrders();
+    } catch (err: any) {
+      toast({ title: "Erro ao emitir NF-e", description: err.message, variant: "destructive" });
+    } finally {
+      setInvoiceLoading(null);
+    }
+  };
+
+  const printInvoice = async (order: any) => {
+    setInvoiceLoading(order.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("bling-invoice", {
+        body: { action: "print", order_id: order.id },
+      });
+      if (error) throw new Error(await extractFunctionErrorMessage(error, "Falha ao obter NF-e"));
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const pdfUrl = (data as any).pdf_url;
+      if (!pdfUrl) throw new Error("PDF indisponível.");
+      const popup = window.open("", "nfe", "width=900,height=720");
+      if (popup) {
+        popup.document.write(`<!doctype html><html><head><title>NF-e ${(data as any).numero || ""}</title>
+          <style>html,body{margin:0;height:100%;background:#111}iframe{border:0;width:100%;height:100%}</style>
+          </head><body>
+          <iframe src="${pdfUrl}" onload="setTimeout(()=>{try{this.contentWindow.focus();this.contentWindow.print();}catch(e){}},700)"></iframe>
+          </body></html>`);
+        popup.document.close();
+      }
+    } catch (err: any) {
+      toast({ title: "Erro ao abrir NF-e", description: err.message, variant: "destructive" });
+    } finally {
+      setInvoiceLoading(null);
+    }
+  };
+
   const deleteOrder = async () => {
     if (!orderToDelete) return;
 
@@ -496,6 +540,42 @@ const AdminOrders = () => {
                           <><Truck className="w-4 h-4 mr-2" /> Imprimir Etiqueta</>
                         )}
                       </Button>
+                    )}
+
+                    {/* Bling NF-e */}
+                    {(order.status === "pago" || order.status === "enviado" || order.status === "entregue") && (
+                      <div className="space-y-2 border-t border-border pt-3">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <FileText className="w-3 h-3" /> Nota Fiscal {order.invoice_number ? `· Nº ${order.invoice_number}` : ""}
+                        </p>
+                        {!order.invoice_number ? (
+                          <Button
+                            onClick={() => issueInvoice(order)}
+                            disabled={invoiceLoading === order.id}
+                            className="w-full"
+                            variant="secondary"
+                          >
+                            {invoiceLoading === order.id ? (
+                              <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Emitindo NF-e...</>
+                            ) : (
+                              <><FileText className="w-4 h-4 mr-2" /> Emitir Nota Fiscal (Bling)</>
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => printInvoice(order)}
+                            disabled={invoiceLoading === order.id}
+                            className="w-full"
+                            variant="outline"
+                          >
+                            {invoiceLoading === order.id ? (
+                              <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Abrindo NF-e...</>
+                            ) : (
+                              <><Printer className="w-4 h-4 mr-2" /> Imprimir Nota Fiscal</>
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     )}
 
                     {order.payment_method && (

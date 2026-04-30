@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, LogOut, ChevronLeft, TicketPercent, FilePenLine, Users, BarChart3, Newspaper } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, LogOut, ChevronLeft, TicketPercent, FilePenLine, Users, BarChart3, Newspaper, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -13,6 +13,7 @@ const navItems = [
   { label: "Blog", href: "/admin/blog", icon: Newspaper, access: "content" },
   { label: "Administradores", href: "/admin/administradores", icon: Users, access: "admin" },
   { label: "Métricas", href: "/admin/metricas", icon: BarChart3, access: "all" },
+  { label: "Integração Bling", href: "/admin/bling", icon: FileText, access: "admin" },
 ] as const;
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
