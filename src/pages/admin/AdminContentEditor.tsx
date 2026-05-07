@@ -143,6 +143,7 @@ const SECTION_SCHEMAS: Record<string, SectionSchema> = {
       { key: "kind", label: "Tipo (NÃO ALTERAR)", type: "text", helper: "Identificador interno: 'creatina' ou 'tmb'." },
       { key: "title", label: "Título do card", type: "text" },
       { key: "subtitle", label: "Subtítulo do card", type: "text" },
+      { key: "cta_size", label: "Tamanho do botão final (sm | default | lg) — só preencher no 1º item", type: "text", placeholder: "lg" },
       { key: "label_grams", label: "[Creatina] Label dose diária", type: "text" },
       { key: "label_stock", label: "[Creatina] Label quantidade no pote", type: "text" },
       { key: "label_start", label: "[Creatina] Label data de início", type: "text" },
