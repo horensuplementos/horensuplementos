@@ -135,6 +135,7 @@ const SECTION_SCHEMAS: Record<string, SectionSchema> = {
       { key: "description", label: "Descrição", type: "textarea" },
       { key: "cta_label", label: "Texto do botão final", type: "text", placeholder: "Ver produtos Horen" },
       { key: "cta_link", label: "Link do botão final", type: "url", placeholder: "/#produtos" },
+      { key: "cta_size", label: "Tamanho do botão (sm | default | lg)", type: "text", placeholder: "lg", helper: "Salvo em 'image_url' por reuso de campo. Valores aceitos: sm, default, lg." },
     ],
     itemsLabel: "Calculadoras",
     itemsHelper: "Edite os textos exibidos em cada calculadora. NÃO altere o campo 'kind'.",
