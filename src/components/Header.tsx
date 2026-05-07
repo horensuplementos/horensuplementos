@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingBag, Menu, X, Search, User, LogOut, Shield } from "lucide-react";
+import { ShoppingBag, Menu, X, Search, User, LogOut, Shield, Calculator, Calendar, Flame, ChevronDown } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/horen-logo.png";
@@ -37,6 +37,10 @@ const Header = () => {
       navigate("/blog");
       return;
     }
+    if (href === "/calculadoras") {
+      navigate("/calculadoras");
+      return;
+    }
     const hash = href.replace("/", "");
     if (window.location.pathname !== "/") {
       navigate(href);
@@ -52,6 +56,7 @@ const Header = () => {
     { label: "Produtos", href: "/#produtos" },
     { label: "Sobre", href: "/#sobre" },
     { label: "Blog", href: "/blog" },
+    { label: "Calculadoras", href: "/calculadoras" },
     { label: "Contato", href: "/#contato" },
   ];
 
@@ -63,15 +68,55 @@ const Header = () => {
         </button>
 
         <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <button
+          {navLinks.map((link) =>
+            link.label === "Calculadoras" ? (
+              <div key={link.href} className="relative group">
+                <button
+                  onClick={() => handleNavClick(link.href)}
+                  className="flex items-center gap-1 text-sm font-body font-medium text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {link.label}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="w-72 bg-card border border-border rounded-xl shadow-lg p-2">
+                    <button
+                      onClick={() => navigate("/calculadoras#creatina")}
+                      className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-body font-semibold text-foreground">Duração da Creatina</p>
+                        <p className="text-xs text-muted-foreground font-body">Quanto tempo seu pote dura</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => navigate("/calculadoras#tmb")}
+                      className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Flame className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-body font-semibold text-foreground">Taxa Metabólica Basal</p>
+                        <p className="text-xs text-muted-foreground font-body">Calcule seu gasto calórico</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
               key={link.href}
               onClick={() => handleNavClick(link.href)}
               className="text-sm font-body font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               {link.label}
-            </button>
-          ))}
+              </button>
+            )
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
