@@ -255,7 +255,43 @@ const AdminBlog = () => {
           <p className="text-[11px] text-muted-foreground">
             Para publicar automaticamente em horários definidos, configure um cron job que chame a edge function <code>ai-generate-blog</code>. As configurações acima são lidas pela automação.
           </p>
-          <Button onClick={saveAutomation}>Salvar configurações</Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={saveAutomation}>Salvar configurações</Button>
+            <Button
+              variant="outline"
+              disabled={aiLoading}
+              onClick={async () => {
+                const cats = automation.categories || [];
+                const cat = cats[Math.floor(Math.random() * cats.length)] || "Hipertrofia";
+                setAiLoading(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke("ai-generate-blog", {
+                    body: { category: cat, tone: automation.tone, word_count: automation.word_count },
+                  });
+                  if (error) throw error;
+                  if (!data?.ok) throw new Error(data?.error || "Falha");
+                  const c = data.content;
+                  const status = automation.auto_publish ? "published" : "draft";
+                  await (supabase as any).from("blog_posts").insert({
+                    slug: c.slug || slugify(c.title), title: c.title, excerpt: c.excerpt,
+                    category: c.category || cat, read_time: c.read_time, content: c.content,
+                    meta_description: c.meta_description, tags: c.tags || [], keywords: c.keywords || [],
+                    status, published: status === "published",
+                    published_at: new Date().toISOString(),
+                    ai_generated: true, ai_generated_at: data.generated_at,
+                  });
+                  await (supabase as any).from("blog_automation_settings").update({ last_run_at: new Date().toISOString() }).eq("id", 1);
+                  toast.success(`Artigo "${c.title}" criado (${status === "published" ? "publicado" : "rascunho"})`);
+                  load();
+                } catch (e: any) {
+                  toast.error(e.message);
+                } finally { setAiLoading(false); }
+              }}
+              className="gap-2"
+            >
+              {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Executar agora
+            </Button>
+          </div>
         </Card>
       )}
 
