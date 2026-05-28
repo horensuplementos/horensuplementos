@@ -86,6 +86,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          kind: string
+          success: boolean
+          target_id: string | null
+          tokens_estimate: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind: string
+          success?: boolean
+          target_id?: string | null
+          tokens_estimate?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          kind?: string
+          success?: boolean
+          target_id?: string | null
+          tokens_estimate?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       bling_credentials: {
         Row: {
           access_token: string | null
@@ -122,49 +155,109 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_automation_settings: {
+        Row: {
+          auto_publish: boolean
+          categories: string[]
+          enabled: boolean
+          id: number
+          last_run_at: string | null
+          publish_time: string
+          tone: string
+          updated_at: string
+          word_count: number
+        }
+        Insert: {
+          auto_publish?: boolean
+          categories?: string[]
+          enabled?: boolean
+          id?: number
+          last_run_at?: string | null
+          publish_time?: string
+          tone?: string
+          updated_at?: string
+          word_count?: number
+        }
+        Update: {
+          auto_publish?: boolean
+          categories?: string[]
+          enabled?: boolean
+          id?: number
+          last_run_at?: string | null
+          publish_time?: string
+          tone?: string
+          updated_at?: string
+          word_count?: number
+        }
+        Relationships: []
+      }
       blog_posts: {
         Row: {
+          ai_generated: boolean
+          ai_generated_at: string | null
+          ai_history: Json
           category: string | null
           content: string
           cover_image_url: string | null
           created_at: string
           excerpt: string | null
           id: string
+          keywords: string[] | null
+          meta_description: string | null
           published: boolean
           published_at: string
           read_time: string | null
+          scheduled_at: string | null
           slug: string
           sort_order: number
+          status: string
+          tags: string[] | null
           title: string
           updated_at: string
         }
         Insert: {
+          ai_generated?: boolean
+          ai_generated_at?: string | null
+          ai_history?: Json
           category?: string | null
           content?: string
           cover_image_url?: string | null
           created_at?: string
           excerpt?: string | null
           id?: string
+          keywords?: string[] | null
+          meta_description?: string | null
           published?: boolean
           published_at?: string
           read_time?: string | null
+          scheduled_at?: string | null
           slug: string
           sort_order?: number
+          status?: string
+          tags?: string[] | null
           title: string
           updated_at?: string
         }
         Update: {
+          ai_generated?: boolean
+          ai_generated_at?: string | null
+          ai_history?: Json
           category?: string | null
           content?: string
           cover_image_url?: string | null
           created_at?: string
           excerpt?: string | null
           id?: string
+          keywords?: string[] | null
+          meta_description?: string | null
           published?: boolean
           published_at?: string
           read_time?: string | null
+          scheduled_at?: string | null
           slug?: string
           sort_order?: number
+          status?: string
+          tags?: string[] | null
           title?: string
           updated_at?: string
         }
@@ -525,11 +618,24 @@ export type Database = {
       products: {
         Row: {
           active: boolean
+          ai_benefits: Json | null
+          ai_description_long: string | null
+          ai_description_short: string | null
+          ai_faq: Json | null
+          ai_generated: boolean
+          ai_generated_at: string | null
+          ai_history: Json
+          ai_keywords: string[] | null
+          ai_meta_description: string | null
+          benefits_input: string | null
+          brand: string | null
           category: string | null
           created_at: string
           description: string | null
+          flavor: string | null
           id: string
           image_url: string | null
+          ingredients: string | null
           name: string
           price: number
           stock: number
@@ -538,11 +644,24 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          ai_benefits?: Json | null
+          ai_description_long?: string | null
+          ai_description_short?: string | null
+          ai_faq?: Json | null
+          ai_generated?: boolean
+          ai_generated_at?: string | null
+          ai_history?: Json
+          ai_keywords?: string[] | null
+          ai_meta_description?: string | null
+          benefits_input?: string | null
+          brand?: string | null
           category?: string | null
           created_at?: string
           description?: string | null
+          flavor?: string | null
           id?: string
           image_url?: string | null
+          ingredients?: string | null
           name: string
           price: number
           stock?: number
@@ -551,11 +670,24 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          ai_benefits?: Json | null
+          ai_description_long?: string | null
+          ai_description_short?: string | null
+          ai_faq?: Json | null
+          ai_generated?: boolean
+          ai_generated_at?: string | null
+          ai_history?: Json
+          ai_keywords?: string[] | null
+          ai_meta_description?: string | null
+          benefits_input?: string | null
+          brand?: string | null
           category?: string | null
           created_at?: string
           description?: string | null
+          flavor?: string | null
           id?: string
           image_url?: string | null
+          ingredients?: string | null
           name?: string
           price?: number
           stock?: number
