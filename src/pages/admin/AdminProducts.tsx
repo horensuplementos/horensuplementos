@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Upload, X, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X, Package, Sparkles, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -18,6 +18,19 @@ interface ProductForm {
   weight: string;
   active: boolean;
   image_url: string;
+  brand: string;
+  flavor: string;
+  benefits_input: string;
+  ingredients: string;
+  ai_description_short: string;
+  ai_description_long: string;
+  ai_benefits: string[];
+  ai_faq: { q: string; a: string }[];
+  ai_meta_description: string;
+  ai_keywords: string[];
+  ai_generated: boolean;
+  ai_generated_at: string | null;
+  ai_history: any[];
 }
 
 const emptyForm: ProductForm = {
@@ -29,6 +42,19 @@ const emptyForm: ProductForm = {
   weight: "",
   active: true,
   image_url: "",
+  brand: "",
+  flavor: "",
+  benefits_input: "",
+  ingredients: "",
+  ai_description_short: "",
+  ai_description_long: "",
+  ai_benefits: [],
+  ai_faq: [],
+  ai_meta_description: "",
+  ai_keywords: [],
+  ai_generated: false,
+  ai_generated_at: null,
+  ai_history: [],
 };
 
 const AdminProducts = () => {
@@ -38,6 +64,7 @@ const AdminProducts = () => {
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const { toast } = useToast();
 
   const fetchProducts = async () => {
@@ -96,7 +123,20 @@ const AdminProducts = () => {
       weight: form.weight || null,
       active: form.active,
       image_url: form.image_url || null,
-    };
+      brand: form.brand || null,
+      flavor: form.flavor || null,
+      benefits_input: form.benefits_input || null,
+      ingredients: form.ingredients || null,
+      ai_description_short: form.ai_description_short || null,
+      ai_description_long: form.ai_description_long || null,
+      ai_benefits: form.ai_benefits || [],
+      ai_faq: form.ai_faq || [],
+      ai_meta_description: form.ai_meta_description || null,
+      ai_keywords: form.ai_keywords || [],
+      ai_generated: form.ai_generated,
+      ai_generated_at: form.ai_generated_at,
+      ai_history: form.ai_history || [],
+    } as any;
 
     if (editingId) {
       const { error } = await supabase.from("products").update(payload).eq("id", editingId);
@@ -122,6 +162,7 @@ const AdminProducts = () => {
   };
 
   const handleEdit = (product: Product) => {
+    const p = product as any;
     setForm({
       name: product.name,
       description: product.description || "",
@@ -131,6 +172,19 @@ const AdminProducts = () => {
       weight: product.weight || "",
       active: product.active,
       image_url: product.image_url || "",
+      brand: p.brand || "",
+      flavor: p.flavor || "",
+      benefits_input: p.benefits_input || "",
+      ingredients: p.ingredients || "",
+      ai_description_short: p.ai_description_short || "",
+      ai_description_long: p.ai_description_long || "",
+      ai_benefits: p.ai_benefits || [],
+      ai_faq: p.ai_faq || [],
+      ai_meta_description: p.ai_meta_description || "",
+      ai_keywords: p.ai_keywords || [],
+      ai_generated: !!p.ai_generated,
+      ai_generated_at: p.ai_generated_at || null,
+      ai_history: p.ai_history || [],
     });
     setEditingId(product.id);
     setShowForm(true);
@@ -144,6 +198,57 @@ const AdminProducts = () => {
     } else {
       toast({ title: "Produto excluído!" });
       fetchProducts();
+    }
+  };
+
+  const handleGenerateAI = async () => {
+    if (!form.name.trim()) {
+      toast({ title: "Informe o nome do produto antes de gerar.", variant: "destructive" });
+      return;
+    }
+    if (form.ai_generated && !confirm("Já existe uma descrição gerada por IA. Deseja regenerar e arquivar a versão atual?")) return;
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-generate-product", {
+        body: {
+          product_id: editingId,
+          product: {
+            name: form.name,
+            brand: form.brand,
+            weight: form.weight,
+            flavor: form.flavor,
+            category: form.category,
+            benefits_input: form.benefits_input,
+            ingredients: form.ingredients,
+          },
+        },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Falha na IA");
+      const c = data.content;
+      const prevSnapshot = form.ai_generated ? [{
+        at: form.ai_generated_at,
+        short: form.ai_description_short,
+        long: form.ai_description_long,
+      }, ...(form.ai_history || [])].slice(0, 5) : form.ai_history;
+      setForm((prev) => ({
+        ...prev,
+        ai_description_short: c.description_short || "",
+        ai_description_long: c.description_long || "",
+        ai_benefits: Array.isArray(c.benefits) ? c.benefits : [],
+        ai_faq: Array.isArray(c.faq) ? c.faq : [],
+        ai_meta_description: c.meta_description || "",
+        ai_keywords: Array.isArray(c.keywords) ? c.keywords : [],
+        ai_generated: true,
+        ai_generated_at: data.generated_at,
+        ai_history: prevSnapshot,
+        description: prev.description || c.description_long || "",
+      }));
+      toast({ title: "Descrição gerada com IA!" });
+    } catch (e: any) {
+      toast({ title: "Erro ao gerar com IA", description: e.message, variant: "destructive" });
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -220,6 +325,14 @@ const AdminProducts = () => {
                 />
               </div>
               <div>
+                <label className="text-sm font-body text-muted-foreground mb-1 block">Marca</label>
+                <input className={inputClass} value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="Horen Suplementos" />
+              </div>
+              <div>
+                <label className="text-sm font-body text-muted-foreground mb-1 block">Sabor</label>
+                <input className={inputClass} value={form.flavor} onChange={(e) => setForm({ ...form, flavor: e.target.value })} placeholder="Ex: Morango" />
+              </div>
+              <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Estoque *</label>
                 <input
                   type="number"
@@ -265,6 +378,74 @@ const AdminProducts = () => {
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                 />
               </div>
+              <div className="md:col-span-2">
+                <label className="text-sm font-body text-muted-foreground mb-1 block">Benefícios (para a IA, um por linha ou separados por vírgula)</label>
+                <textarea className={inputClass + " min-h-[60px]"} value={form.benefits_input} onChange={(e) => setForm({ ...form, benefits_input: e.target.value })} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-sm font-body text-muted-foreground mb-1 block">Ingredientes (opcional)</label>
+                <textarea className={inputClass + " min-h-[60px]"} value={form.ingredients} onChange={(e) => setForm({ ...form, ingredients: e.target.value })} />
+              </div>
+
+              <div className="md:col-span-2 border border-border rounded-xl p-4 bg-secondary/40 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="font-heading text-sm font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Conteúdo gerado por IA</h3>
+                    {form.ai_generated && form.ai_generated_at && (
+                      <p className="text-[11px] text-muted-foreground mt-1">Gerado em {new Date(form.ai_generated_at).toLocaleString("pt-BR")} · {(form.ai_history?.length || 0) + 1}ª versão</p>
+                    )}
+                  </div>
+                  <Button type="button" onClick={handleGenerateAI} disabled={aiLoading} className="gap-2">
+                    {aiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {form.ai_generated ? "Regenerar" : "Gerar descrição com IA"}
+                  </Button>
+                </div>
+
+                {form.ai_generated && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Descrição curta</label>
+                      <textarea className={inputClass + " min-h-[60px]"} value={form.ai_description_short} onChange={(e) => setForm({ ...form, ai_description_short: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Descrição longa</label>
+                      <textarea className={inputClass + " min-h-[140px]"} value={form.ai_description_long} onChange={(e) => setForm({ ...form, ai_description_long: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Benefícios (um por linha)</label>
+                      <textarea
+                        className={inputClass + " min-h-[80px]"}
+                        value={(form.ai_benefits || []).join("\n")}
+                        onChange={(e) => setForm({ ...form, ai_benefits: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">FAQ (JSON)</label>
+                      <textarea
+                        className={inputClass + " min-h-[100px] font-mono text-xs"}
+                        value={JSON.stringify(form.ai_faq || [], null, 2)}
+                        onChange={(e) => { try { setForm({ ...form, ai_faq: JSON.parse(e.target.value) }); } catch {} }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Meta description SEO</label>
+                        <textarea className={inputClass + " min-h-[60px]"} value={form.ai_meta_description} onChange={(e) => setForm({ ...form, ai_meta_description: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Palavras-chave (vírgula)</label>
+                        <input
+                          className={inputClass}
+                          value={(form.ai_keywords || []).join(", ")}
+                          onChange={(e) => setForm({ ...form, ai_keywords: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-primary uppercase tracking-wider">✨ Descrição gerada por IA</p>
+                  </div>
+                )}
+              </div>
+
               <div className="md:col-span-2 flex items-center gap-3">
                 <input
                   type="checkbox"
