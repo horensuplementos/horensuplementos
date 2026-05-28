@@ -401,6 +401,39 @@ const AdminBlog = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Meta description (SEO)</Label>
+                  <Textarea rows={2} value={editing.meta_description || ""} onChange={(e) => setEditing({ ...editing, meta_description: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Tags (vírgula)</Label>
+                  <Input value={(editing.tags || []).join(", ")} onChange={(e) => setEditing({ ...editing, tags: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} />
+                </div>
+                <div>
+                  <Label>Palavras-chave (vírgula)</Label>
+                  <Input value={(editing.keywords || []).join(", ")} onChange={(e) => setEditing({ ...editing, keywords: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <select
+                    className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                    value={editing.status || "draft"}
+                    onChange={(e) => setEditing({ ...editing, status: e.target.value, published: e.target.value === "published" })}
+                  >
+                    <option value="draft">Rascunho</option>
+                    <option value="scheduled">Agendado</option>
+                    <option value="published">Publicado</option>
+                  </select>
+                </div>
+                {editing.status === "scheduled" && (
+                  <div className="md:col-span-2">
+                    <Label>Publicar em</Label>
+                    <Input type="datetime-local" value={editing.scheduled_at ? new Date(editing.scheduled_at).toISOString().slice(0,16) : ""} onChange={(e) => setEditing({ ...editing, scheduled_at: e.target.value })} />
+                  </div>
+                )}
+              </div>
+
               <div>
                 <Label>Imagem de capa</Label>
                 <div className="flex gap-2">
