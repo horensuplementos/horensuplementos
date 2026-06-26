@@ -130,7 +130,11 @@ Deno.serve(async (req) => {
       })
     }
 
-    const siteUrl = req.headers.get('origin') || 'https://horensuplementos.lovable.app'
+    const PRODUCTION_URL = 'https://horensuplementos.com.br'
+    const origin = req.headers.get('origin') || ''
+    // Mercado Pago requires HTTPS public URLs for auto_return. Use production
+    // domain unless the request comes from another HTTPS origin (e.g. preview).
+    const siteUrl = origin && origin.startsWith('https://') ? origin : PRODUCTION_URL
 
     if (mpItems.length === 0) {
       return json({ error: 'Pedido sem itens para pagamento' }, 400)
@@ -148,9 +152,9 @@ Deno.serve(async (req) => {
         identification: { type: 'CPF', number: payerCpf },
       },
       back_urls: {
-        success: `${siteUrl}/checkout/sucesso?order_id=${order_id}`,
-        failure: `${siteUrl}/checkout/falha?order_id=${order_id}`,
-        pending: `${siteUrl}/checkout/pendente?order_id=${order_id}`,
+        success: `${siteUrl}/checkout/success?order_id=${order_id}`,
+        failure: `${siteUrl}/checkout/payment-error?order_id=${order_id}`,
+        pending: `${siteUrl}/checkout/pending?order_id=${order_id}`,
       },
       auto_return: 'approved',
       payment_methods: {

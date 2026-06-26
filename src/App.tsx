@@ -49,6 +49,9 @@ const App = () => (
               <Route path="/checkout/sucesso" element={<CheckoutStatus type="sucesso" />} />
               <Route path="/checkout/falha" element={<CheckoutStatus type="falha" />} />
               <Route path="/checkout/pendente" element={<CheckoutStatus type="pendente" />} />
+              <Route path="/checkout/success" element={<CheckoutStatus type="sucesso" />} />
+              <Route path="/checkout/payment-error" element={<CheckoutStatus type="falha" />} />
+              <Route path="/checkout/pending" element={<CheckoutStatus type="pendente" />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<Dashboard />} />
                 <Route path="/admin/cupons" element={<AdminCoupons />} />
