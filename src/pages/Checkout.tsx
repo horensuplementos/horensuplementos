@@ -565,8 +565,16 @@ const Checkout = () => {
       }
 
       clearCart();
-      // Redirect to Mercado Pago checkout
-      window.location.href = paymentUrl;
+      // Abre o checkout do Mercado Pago em uma nova aba e mantém o usuário em
+      // uma página de acompanhamento que detecta o pagamento via webhook
+      // mesmo quando o MP não redireciona automaticamente (caso comum com Pix).
+      const popup = window.open(paymentUrl, "_blank");
+      if (!popup) {
+        // Bloqueador de pop-up: faz fallback para a mesma aba.
+        window.location.href = paymentUrl;
+        return;
+      }
+      navigate(`/checkout/pendente?order_id=${order.id}`);
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {

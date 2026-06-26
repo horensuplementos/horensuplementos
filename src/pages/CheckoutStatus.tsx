@@ -45,7 +45,9 @@ const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
     if (!orderId) return;
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 12;
+    // Pix pode levar alguns minutos para ser confirmado pelo banco; mantemos o
+    // polling por até ~10 minutos (240 * 2.5s).
+    const maxAttempts = type === "sucesso" ? 12 : 240;
     const poll = async () => {
       while (!cancelled && attempts < maxAttempts) {
         attempts++;
@@ -56,7 +58,16 @@ const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
           .single();
         if (data) {
           setOrder(data);
-          // stop polling once status reflects a final/known state
+          // Se o pedido já foi pago e o usuário está na tela de "pendente",
+          // levamos automaticamente para a tela de sucesso.
+          if (
+            data.status === "pago" &&
+            type !== "sucesso" &&
+            type !== "falha"
+          ) {
+            navigate(`/checkout/sucesso?order_id=${orderId}`, { replace: true });
+            return;
+          }
           if (["pago", "cancelado", "enviado", "entregue"].includes(data.status)) {
             return;
           }
@@ -68,7 +79,7 @@ const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
     return () => {
       cancelled = true;
     };
-  }, [orderId]);
+  }, [orderId, type, navigate]);
 
   return (
     <div className="min-h-screen bg-background">
