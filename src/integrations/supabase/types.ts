@@ -510,6 +510,7 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone: string | null
+          delivery_method: string
           discount_amount: number
           id: string
           invoice_key: string | null
@@ -541,6 +542,7 @@ export type Database = {
           customer_email: string
           customer_name: string
           customer_phone?: string | null
+          delivery_method?: string
           discount_amount?: number
           id?: string
           invoice_key?: string | null
@@ -572,6 +574,7 @@ export type Database = {
           customer_email?: string
           customer_name?: string
           customer_phone?: string | null
+          delivery_method?: string
           discount_amount?: number
           id?: string
           invoice_key?: string | null
@@ -791,6 +794,30 @@ export type Database = {
           section_key?: string
           subtitle?: string | null
           title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          id: number
+          local_pickup_enabled: boolean
+          pickup_address: string | null
+          pickup_instructions: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          local_pickup_enabled?: boolean
+          pickup_address?: string | null
+          pickup_instructions?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          local_pickup_enabled?: boolean
+          pickup_address?: string | null
+          pickup_instructions?: string | null
           updated_at?: string
         }
         Relationships: []
