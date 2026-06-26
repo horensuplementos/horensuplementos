@@ -23,6 +23,7 @@ import AdminBlog from "./pages/admin/AdminBlog.tsx";
 import AdminManagers from "./pages/admin/AdminManagers.tsx";
 import AdminMetrics from "./pages/admin/AdminMetrics.tsx";
 import AdminBling from "./pages/admin/AdminBling.tsx";
+import AdminSettings from "./pages/admin/AdminSettings.tsx";
 import AcceptInvite from "./pages/AcceptInvite.tsx";
 import { SiteContentProvider } from "./contexts/SiteContentContext";
 
@@ -58,6 +59,7 @@ const App = () => (
                 <Route path="/admin/administradores" element={<AdminManagers />} />
                 <Route path="/admin/metricas" element={<AdminMetrics />} />
                 <Route path="/admin/bling" element={<AdminBling />} />
+                <Route path="/admin/configuracoes" element={<AdminSettings />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
