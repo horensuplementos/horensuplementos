@@ -5,7 +5,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, ShoppingBag, Loader2, Truck, Plus, Pencil, Trash2, MapPin, Star, Check } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Loader2, Truck, Plus, Pencil, Trash2, MapPin, Star, Check, Store } from "lucide-react";
 import Header from "@/components/Header";
 import CartDrawer from "@/components/CartDrawer";
 
@@ -98,6 +98,12 @@ const Checkout = () => {
     discount_value: number;
     is_free_shipping?: boolean;
   } | null>(null);
+  const [pickupSettings, setPickupSettings] = useState<{
+    enabled: boolean;
+    address: string;
+    instructions: string;
+  }>({ enabled: false, address: "", instructions: "" });
+  const [deliveryMode, setDeliveryMode] = useState<"shipping" | "pickup">("shipping");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -293,6 +299,44 @@ const Checkout = () => {
     loadUser();
   }, [navigate, toast]);
 
+  useEffect(() => {
+    const loadPickupSettings = async () => {
+      const { data } = await supabase
+        .from("site_settings" as any)
+        .select("local_pickup_enabled, pickup_address, pickup_instructions")
+        .eq("id", 1)
+        .maybeSingle();
+      if (data) {
+        setPickupSettings({
+          enabled: !!(data as any).local_pickup_enabled,
+          address: (data as any).pickup_address || "Retirada na loja - São Paulo/SP",
+          instructions: (data as any).pickup_instructions || "",
+        });
+      }
+    };
+    loadPickupSettings();
+  }, []);
+
+  const PICKUP_OPTION: ShippingOption = {
+    id: 0,
+    name: "Retirada na Loja",
+    company: "Loja",
+    price: 0,
+    delivery_time: 0,
+    currency: "BRL",
+  };
+
+  const handleDeliveryModeChange = (mode: "shipping" | "pickup") => {
+    setDeliveryMode(mode);
+    if (mode === "pickup") {
+      setSelectedShipping(PICKUP_OPTION);
+      setShippingOptions([]);
+      setShowAddressForm(false);
+    } else {
+      setSelectedShipping(null);
+    }
+  };
+
   const fetchAddressByCep = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, "");
     if (cleanCep.length !== 8) return;
@@ -409,9 +453,13 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (items.length === 0 || !selectedShipping) return;
+    if (items.length === 0) return;
 
-    if (!selectedAddressId || showAddressForm) {
+    const isPickup = deliveryMode === "pickup";
+
+    if (!isPickup && !selectedShipping) return;
+
+    if (!isPickup && (!selectedAddressId || showAddressForm)) {
       toast({ title: "Selecione um endereço de entrega", variant: "destructive" });
       return;
     }
@@ -438,7 +486,15 @@ const Checkout = () => {
     setLoading(true);
 
     const complementPart = address.complement ? ` (${address.complement})` : "";
-    const fullAddress = `${address.street}, ${address.number}${complementPart} - ${address.neighborhood}, ${address.city} - ${address.state}, CEP: ${address.zip_code}`;
+    const shippingAddress = `${address.street}, ${address.number}${complementPart} - ${address.neighborhood}, ${address.city} - ${address.state}, CEP: ${address.zip_code}`;
+    const fullAddress = isPickup
+      ? `RETIRADA NA LOJA — ${pickupSettings.address || "São Paulo/SP"}`
+      : shippingAddress;
+    const shippingServiceName = isPickup
+      ? "Retirada na Loja"
+      : `${selectedShipping!.company} - ${selectedShipping!.name}`;
+    const shippingServiceId = isPickup ? 0 : selectedShipping!.id;
+    const shippingPrice = isPickup ? 0 : selectedShipping!.price;
 
     try {
       const { data: order, error: orderError } = await supabase
@@ -456,9 +512,10 @@ const Checkout = () => {
           customer_address: fullAddress,
           customer_cpf: normalizedCpf || null,
           status: "pendente",
-          shipping_service_id: selectedShipping.id,
-          shipping_service_name: `${selectedShipping.company} - ${selectedShipping.name}`,
-          shipping_price: selectedShipping.price,
+          shipping_service_id: shippingServiceId,
+          shipping_service_name: shippingServiceName,
+          shipping_price: shippingPrice,
+          delivery_method: isPickup ? "pickup" : "shipping",
         } as any)
         .select()
         .single();
@@ -597,6 +654,56 @@ const Checkout = () => {
               </div>
 
               {/* Endereço */}
+              {pickupSettings.enabled && (
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
+                  <h2 className="font-heading text-lg font-semibold text-foreground">Como deseja receber?</h2>
+                  <label
+                    className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                      deliveryMode === "shipping" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="delivery-mode"
+                      checked={deliveryMode === "shipping"}
+                      onChange={() => handleDeliveryModeChange("shipping")}
+                      className="accent-primary"
+                    />
+                    <Truck className="w-5 h-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-body text-sm font-medium text-foreground">Receber em casa</p>
+                      <p className="text-xs text-muted-foreground">Entrega via transportadora (Melhor Envio)</p>
+                    </div>
+                  </label>
+                  <label
+                    className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                      deliveryMode === "pickup" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="delivery-mode"
+                      checked={deliveryMode === "pickup"}
+                      onChange={() => handleDeliveryModeChange("pickup")}
+                      className="accent-primary"
+                    />
+                    <Store className="w-5 h-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-body text-sm font-medium text-foreground">
+                        Retirar na Loja <span className="text-primary">(Grátis - São Paulo)</span>
+                      </p>
+                      {pickupSettings.address && (
+                        <p className="text-xs text-muted-foreground">{pickupSettings.address}</p>
+                      )}
+                      {pickupSettings.instructions && deliveryMode === "pickup" && (
+                        <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{pickupSettings.instructions}</p>
+                      )}
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {deliveryMode === "shipping" && (
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="font-heading text-lg font-semibold text-foreground">Endereço de Entrega</h2>
@@ -833,9 +940,10 @@ const Checkout = () => {
                   </Button>
                 )}
               </div>
+              )}
 
               {/* Opções de frete */}
-              {shippingOptions.length > 0 && (
+              {deliveryMode === "shipping" && shippingOptions.length > 0 && (
                 <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
                   <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
                     <Truck className="w-5 h-5" /> Opções de Frete
@@ -943,12 +1051,12 @@ const Checkout = () => {
 
               <Button
                 type="submit"
-                disabled={loading || !selectedShipping}
+                disabled={loading || (deliveryMode === "shipping" && !selectedShipping)}
                 className="w-full h-14 rounded-xl font-heading text-base font-semibold"
               >
                 {loading ? "Processando..." : "Finalizar Pedido"}
               </Button>
-              {!selectedShipping && shippingOptions.length === 0 && (
+              {deliveryMode === "shipping" && !selectedShipping && shippingOptions.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground">
                   Informe o CEP e calcule o frete para continuar.
                 </p>
