@@ -43,12 +43,31 @@ const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
 
   useEffect(() => {
     if (!orderId) return;
-    supabase
-      .from("orders")
-      .select("*")
-      .eq("id", orderId)
-      .single()
-      .then(({ data }) => setOrder(data));
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 12;
+    const poll = async () => {
+      while (!cancelled && attempts < maxAttempts) {
+        attempts++;
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", orderId)
+          .single();
+        if (data) {
+          setOrder(data);
+          // stop polling once status reflects a final/known state
+          if (["pago", "cancelado", "enviado", "entregue"].includes(data.status)) {
+            return;
+          }
+        }
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+    };
+    poll();
+    return () => {
+      cancelled = true;
+    };
   }, [orderId]);
 
   return (
