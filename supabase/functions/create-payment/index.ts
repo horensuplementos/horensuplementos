@@ -156,7 +156,9 @@ Deno.serve(async (req) => {
         failure: `${siteUrl}/checkout/payment-error?order_id=${order_id}`,
         pending: `${siteUrl}/checkout/pending?order_id=${order_id}`,
       },
-      auto_return: 'approved',
+      // 'all' garante o redirecionamento automático também para pagamentos
+      // pendentes (Pix/Boleto), não somente para cartão aprovado.
+      auto_return: 'all',
       payment_methods: {
         excluded_payment_methods: [],
         excluded_payment_types: [],
