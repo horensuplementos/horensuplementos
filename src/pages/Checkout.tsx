@@ -654,6 +654,56 @@ const Checkout = () => {
               </div>
 
               {/* Endereço */}
+              {pickupSettings.enabled && (
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
+                  <h2 className="font-heading text-lg font-semibold text-foreground">Como deseja receber?</h2>
+                  <label
+                    className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                      deliveryMode === "shipping" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="delivery-mode"
+                      checked={deliveryMode === "shipping"}
+                      onChange={() => handleDeliveryModeChange("shipping")}
+                      className="accent-primary"
+                    />
+                    <Truck className="w-5 h-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-body text-sm font-medium text-foreground">Receber em casa</p>
+                      <p className="text-xs text-muted-foreground">Entrega via transportadora (Melhor Envio)</p>
+                    </div>
+                  </label>
+                  <label
+                    className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                      deliveryMode === "pickup" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="delivery-mode"
+                      checked={deliveryMode === "pickup"}
+                      onChange={() => handleDeliveryModeChange("pickup")}
+                      className="accent-primary"
+                    />
+                    <Store className="w-5 h-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-body text-sm font-medium text-foreground">
+                        Retirar na Loja <span className="text-primary">(Grátis - São Paulo)</span>
+                      </p>
+                      {pickupSettings.address && (
+                        <p className="text-xs text-muted-foreground">{pickupSettings.address}</p>
+                      )}
+                      {pickupSettings.instructions && deliveryMode === "pickup" && (
+                        <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{pickupSettings.instructions}</p>
+                      )}
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {deliveryMode === "shipping" && (
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="font-heading text-lg font-semibold text-foreground">Endereço de Entrega</h2>
@@ -890,9 +940,10 @@ const Checkout = () => {
                   </Button>
                 )}
               </div>
+              )}
 
               {/* Opções de frete */}
-              {shippingOptions.length > 0 && (
+              {deliveryMode === "shipping" && shippingOptions.length > 0 && (
                 <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
                   <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
                     <Truck className="w-5 h-5" /> Opções de Frete
