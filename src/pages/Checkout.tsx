@@ -1051,12 +1051,12 @@ const Checkout = () => {
 
               <Button
                 type="submit"
-                disabled={loading || !selectedShipping}
+                disabled={loading || (deliveryMode === "shipping" && !selectedShipping)}
                 className="w-full h-14 rounded-xl font-heading text-base font-semibold"
               >
                 {loading ? "Processando..." : "Finalizar Pedido"}
               </Button>
-              {!selectedShipping && shippingOptions.length === 0 && (
+              {deliveryMode === "shipping" && !selectedShipping && shippingOptions.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground">
                   Informe o CEP e calcule o frete para continuar.
                 </p>
