@@ -28,6 +28,8 @@ const statusConfig: Record<StatusType, { icon: typeof CheckCircle2; title: strin
   },
 };
 
+const paidStatuses = ["pago", "paid", "enviado", "entregue"];
+
 interface CheckoutStatusProps {
   type: StatusType;
 }
@@ -39,7 +41,6 @@ const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
   const [order, setOrder] = useState<any>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
-  const paidStatuses = ["pago", "paid", "enviado", "entregue"];
   const isPaid = order ? paidStatuses.includes(String(order.status)) : false;
   const displayType: StatusType = type === "sucesso" && !isPaid ? "pendente" : type;
   const config = statusConfig[displayType];
