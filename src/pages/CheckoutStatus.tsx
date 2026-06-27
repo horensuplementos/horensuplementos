@@ -74,15 +74,13 @@ const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
       }
     };
     const fetchOrder = async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("id", orderId)
-        .maybeSingle();
+      const { data } = await supabase.functions.invoke("check-order-status", {
+        body: { order_id: orderId },
+      });
 
       if (data) {
         setOrder(data);
-        if (paidStatuses.includes(String(data.status))) {
+        if (data.paid || paidStatuses.includes(String(data.status))) {
           redirectToSuccess();
           return true;
         }
