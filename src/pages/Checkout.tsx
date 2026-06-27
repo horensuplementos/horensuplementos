@@ -581,6 +581,7 @@ const Checkout = () => {
       }
       navigate(`/checkout/pendente?order_id=${order.id}`);
     } catch (error: any) {
+      paymentWindow?.close();
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
