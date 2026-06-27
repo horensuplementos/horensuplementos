@@ -152,9 +152,9 @@ Deno.serve(async (req) => {
         identification: { type: 'CPF', number: payerCpf },
       },
       back_urls: {
-        success: `${siteUrl}/checkout/success?order_id=${order_id}`,
-        failure: `${siteUrl}/checkout/payment-error?order_id=${order_id}`,
-        pending: `${siteUrl}/checkout/pending?order_id=${order_id}`,
+        success: `${siteUrl}/pedido/sucesso?id=${order_id}`,
+        failure: `${siteUrl}/checkout/payment-error?id=${order_id}`,
+        pending: `${siteUrl}/checkout/pending?id=${order_id}`,
       },
       // 'all' garante o redirecionamento automático também para pagamentos
       // pendentes (Pix/Boleto), não somente para cartão aprovado.

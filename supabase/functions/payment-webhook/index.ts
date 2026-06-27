@@ -23,13 +23,23 @@ Deno.serve(async (req) => {
     const body = await req.json()
     console.log('Webhook received:', JSON.stringify(body))
 
-    // Mercado Pago sends notifications with type and data
-    if (body.type !== 'payment' && body.action !== 'payment.updated' && body.action !== 'payment.created') {
+    // Mercado Pago can send both the current format
+    // { type: 'payment', data: { id } } and the legacy IPN format
+    // { topic: 'payment', resource: '<id or url>' }.
+    const isPaymentNotification =
+      body.type === 'payment' ||
+      body.topic === 'payment' ||
+      body.action === 'payment.updated' ||
+      body.action === 'payment.created'
+
+    if (!isPaymentNotification) {
       console.log('Ignoring non-payment notification:', body.type, body.action)
       return json({ ok: true })
     }
 
-    const paymentId = body.data?.id
+    const resource = typeof body.resource === 'string' ? body.resource : ''
+    const legacyPaymentId = resource ? resource.split('/').filter(Boolean).pop() : undefined
+    const paymentId = body.data?.id || legacyPaymentId
     if (!paymentId) {
       console.log('No payment ID in webhook body')
       return json({ ok: true })
