@@ -485,6 +485,12 @@ const Checkout = () => {
 
     setLoading(true);
 
+    const paymentWindow = window.open("about:blank", "horen_pagamento");
+    if (paymentWindow) {
+      paymentWindow.document.write("<p style='font-family: sans-serif; padding: 24px;'>Abrindo pagamento seguro...</p>");
+      (window as any).__horenPaymentWindow = paymentWindow;
+    }
+
     const complementPart = address.complement ? ` (${address.complement})` : "";
     const shippingAddress = `${address.street}, ${address.number}${complementPart} - ${address.neighborhood}, ${address.city} - ${address.state}, CEP: ${address.zip_code}`;
     const fullAddress = isPickup
@@ -554,6 +560,7 @@ const Checkout = () => {
 
       if (paymentError || !paymentUrl) {
         console.error("Payment error:", paymentError, paymentData);
+        paymentWindow?.close();
         toast({
           title: "Erro ao gerar pagamento",
           description: "O pedido foi criado mas houve um erro ao gerar o link de pagamento. Tente novamente na página do pedido.",
@@ -565,14 +572,12 @@ const Checkout = () => {
       }
 
       clearCart();
-      // Abre o checkout do Mercado Pago em uma nova aba e mantém o usuário em
-      // uma página de acompanhamento que detecta o pagamento via webhook
-      // mesmo quando o MP não redireciona automaticamente (caso comum com Pix).
-      const popup = window.open(paymentUrl, "_blank");
-      if (!popup) {
-        // Bloqueador de pop-up: faz fallback para a mesma aba.
-        window.location.href = paymentUrl;
-        return;
+      sessionStorage.setItem("horen_pending_payment_order_id", order.id);
+      sessionStorage.setItem("horen_pending_payment_url", paymentUrl);
+
+      if (paymentWindow) {
+        paymentWindow.location.href = paymentUrl;
+        paymentWindow.focus();
       }
       navigate(`/checkout/pendente?order_id=${order.id}`);
     } catch (error: any) {

@@ -35,49 +35,80 @@ interface CheckoutStatusProps {
 const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const orderId = searchParams.get("order_id");
+  const orderId = searchParams.get("order_id") || searchParams.get("id");
   const [order, setOrder] = useState<any>(null);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
-  const config = statusConfig[type];
+  const paidStatuses = ["pago", "paid", "enviado", "entregue"];
+  const isPaid = order ? paidStatuses.includes(String(order.status)) : false;
+  const displayType: StatusType = type === "sucesso" && !isPaid ? "pendente" : type;
+  const config = statusConfig[displayType];
   const Icon = config.icon;
+
+  useEffect(() => {
+    if (!orderId) return;
+    const storedOrderId = sessionStorage.getItem("horen_pending_payment_order_id");
+    const storedPaymentUrl = sessionStorage.getItem("horen_pending_payment_url");
+    if (storedOrderId === orderId && storedPaymentUrl) {
+      setPaymentUrl(storedPaymentUrl);
+    }
+  }, [orderId]);
 
   useEffect(() => {
     if (!orderId) return;
     let cancelled = false;
     let attempts = 0;
-    // Pix pode levar alguns minutos para ser confirmado pelo banco; mantemos o
-    // polling por até ~10 minutos (240 * 2.5s).
-    const maxAttempts = type === "sucesso" ? 12 : 240;
+    const maxAttempts = 240;
+    const redirectToSuccess = () => {
+      const successPath = `/pedido/sucesso?id=${orderId}`;
+      const paymentWindow = (window as any).__horenPaymentWindow;
+      if (paymentWindow && !paymentWindow.closed) {
+        paymentWindow.location.href = `${window.location.origin}${successPath}`;
+        paymentWindow.focus();
+      }
+      sessionStorage.removeItem("horen_pending_payment_order_id");
+      sessionStorage.removeItem("horen_pending_payment_url");
+      if (type !== "sucesso") {
+        navigate(successPath, { replace: true });
+      }
+    };
+    const fetchOrder = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (data) {
+        setOrder(data);
+        if (paidStatuses.includes(String(data.status))) {
+          redirectToSuccess();
+          return true;
+        }
+        if (["cancelado", "falha"].includes(String(data.status))) {
+          return true;
+        }
+      }
+      return false;
+    };
     const poll = async () => {
       while (!cancelled && attempts < maxAttempts) {
         attempts++;
-        const { data } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("id", orderId)
-          .single();
-        if (data) {
-          setOrder(data);
-          // Se o pedido já foi pago e o usuário está na tela de "pendente",
-          // levamos automaticamente para a tela de sucesso.
-          if (
-            data.status === "pago" &&
-            type !== "sucesso" &&
-            type !== "falha"
-          ) {
-            navigate(`/checkout/sucesso?order_id=${orderId}`, { replace: true });
-            return;
-          }
-          if (["pago", "cancelado", "enviado", "entregue"].includes(data.status)) {
-            return;
-          }
+        const done = await fetchOrder();
+        if (done) {
+          return;
         }
         await new Promise((r) => setTimeout(r, 2500));
       }
     };
+    const handleVisibility = () => {
+      if (!document.hidden) fetchOrder();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
     poll();
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [orderId, type, navigate]);
 
@@ -97,7 +128,7 @@ const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
           {order && (
             <div className="bg-card border border-border rounded-2xl p-6 text-left mb-8 space-y-2">
               <p className="text-sm text-muted-foreground">
-                Pedido: <span className="font-mono text-foreground">{order.id?.slice(0, 8)}</span>
+                Número do pedido: <span className="font-mono text-foreground">#{order.id?.slice(0, 8).toUpperCase()}</span>
               </p>
               <p className="text-sm text-muted-foreground">
                 Total: <span className="font-bold text-foreground">
@@ -105,12 +136,27 @@ const CheckoutStatus = ({ type }: CheckoutStatusProps) => {
                 </span>
               </p>
               <p className="text-sm text-muted-foreground">
-                Status: <span className="font-semibold text-foreground capitalize">{order.status}</span>
+                Status: <span className="font-semibold text-foreground">{paidStatuses.includes(String(order.status)) ? "Pago" : String(order.status)}</span>
               </p>
             </div>
           )}
 
           <div className="space-y-3">
+            {displayType === "pendente" && paymentUrl && (
+              <Button
+                variant="outline"
+                className="w-full rounded-xl"
+                onClick={() => {
+                  const popup = window.open(paymentUrl, "horen_pagamento");
+                  if (popup) {
+                    (window as any).__horenPaymentWindow = popup;
+                    popup.focus();
+                  }
+                }}
+              >
+                Abrir pagamento
+              </Button>
+            )}
             <Button onClick={() => navigate("/")} className="w-full rounded-xl">
               <ArrowLeft className="w-4 h-4 mr-2" /> Voltar à loja
             </Button>
