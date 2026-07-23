@@ -102,7 +102,18 @@ Deno.serve(async (req) => {
     if (!order) return json({ error: 'Pedido não encontrado' }, 404)
 
     if (action === 'issue') {
-      if (order.status !== 'pago' && order.status !== 'enviado' && order.status !== 'entregue') {
+      if (order.invoice_status === 'emitida' || order.bling_order_id) {
+        return json({
+          success: true,
+          skipped: true,
+          nfe_id: order.bling_order_id,
+          numero: order.invoice_number,
+          chave: order.invoice_key,
+          pdf_url: order.invoice_pdf_url,
+        })
+      }
+
+      if (!['pago', 'nota_emitida', 'separado', 'enviado', 'entregue'].includes(order.status)) {
         return json({ error: 'Pedido precisa estar pago para emitir NF-e.' }, 400)
       }
 

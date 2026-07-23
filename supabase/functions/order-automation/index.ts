@@ -217,8 +217,16 @@ async function getPaymentMethodId(token: string, paymentMethod: string | null | 
 
 async function issueBlingInvoice(supabase: any, order: any, items: any[]) {
   // Idempotency
-  if (order.invoice_number || order.invoice_key) {
-    return { skipped: true, reason: 'Nota já emitida', number: order.invoice_number, key: order.invoice_key }
+  if (order.invoice_status === 'emitida' || order.invoice_number || order.invoice_key) {
+    return {
+      success: true,
+      skipped: true,
+      reason: 'Nota já emitida',
+      nfe_id: order.bling_order_id,
+      numero: order.invoice_number,
+      chave: order.invoice_key,
+      pdf_url: order.invoice_pdf_url,
+    }
   }
 
   const { data: cred } = await supabase.from('bling_credentials').select('*').limit(1).maybeSingle()
