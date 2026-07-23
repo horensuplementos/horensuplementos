@@ -100,56 +100,29 @@ Deno.serve(async (req) => {
         return json({ error: 'Pedido precisa estar pago para emitir NF-e.' }, 400)
       }
 
-      const { data: items } = await adminClient.from('order_items').select('*').eq('order_id', order_id)
-
-      // Monta payload mínimo da NF-e
-      const itens = (items || []).map((i: any) => ({
-        codigo: i.product_id || i.id,
-        descricao: i.product_name,
-        unidade: 'UN',
-        quantidade: i.quantity,
-        valor: Number(i.unit_price),
-        tipo: 'P',
-        origem: 0,
-      }))
-
-      const cpfDigits = (order.customer_cpf || '').replace(/\D/g, '')
-      const cepDigits = ((order.customer_address || '').match(/CEP:\s*([\d-]+)/)?.[1] || '').replace(/\D/g, '')
-
-      const nfePayload = {
-        tipo: 1,
-        finalidade: 1,
-        natureza_operacao: { id: 0 },
-        contato: {
-          nome: order.customer_name,
-          tipoPessoa: cpfDigits.length === 14 ? 'J' : 'F',
-          numeroDocumento: cpfDigits,
-          email: order.customer_email,
-          telefone: order.customer_phone || '',
-          endereco: { cep: cepDigits },
+      const automationRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/order-automation`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json',
         },
-        itens,
+        body: JSON.stringify({ order_id }),
+      })
+      const automationData = await automationRes.json().catch(() => ({}))
+      if (!automationRes.ok) return json({ error: 'Falha ao emitir NF-e', details: automationData }, automationRes.status)
+      if (automationData?.steps?.invoice?.error) {
+        return json({ error: automationData.steps.invoice.error, details: automationData.steps.invoice }, 400)
       }
 
-      const r = await blingFetch('/nfe', accessToken, { method: 'POST', body: JSON.stringify(nfePayload) })
-      if (!r.ok) return json({ error: 'Falha ao emitir NF-e', details: r.data }, r.status)
-
-      const nfeId = r.data?.data?.id
-      const numero = r.data?.data?.numero
-      const chave = r.data?.data?.chaveAcesso
-
-      // Tenta enviar para SEFAZ
-      if (nfeId) {
-        await blingFetch(`/nfe/${nfeId}/enviar`, accessToken, { method: 'POST' }).catch(() => {})
-      }
-
-      await adminClient.from('orders').update({
-        bling_order_id: nfeId ? String(nfeId) : order.bling_order_id,
-        invoice_number: numero ? String(numero) : null,
-        invoice_key: chave || null,
-      }).eq('id', order_id)
-
-      return json({ success: true, nfe_id: nfeId, numero, chave })
+      const { data: updatedOrder } = await adminClient.from('orders').select('*').eq('id', order_id).single()
+      return json({
+        success: true,
+        nfe_id: updatedOrder?.bling_order_id,
+        numero: updatedOrder?.invoice_number,
+        chave: updatedOrder?.invoice_key,
+        pdf_url: updatedOrder?.invoice_pdf_url,
+        automation: automationData,
+      })
     }
 
     if (action === 'print') {
