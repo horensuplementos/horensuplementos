@@ -34,19 +34,25 @@ async function refreshTokenIfNeeded(supabase: any, cred: any) {
 }
 
 async function blingFetch(path: string, token: string, opts: RequestInit = {}) {
-  const res = await fetch(`${BLING_API}${path}`, {
-    ...opts,
-    headers: {
-      ...(opts.headers || {}),
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-  })
-  const text = await res.text()
-  let json: any = null
-  try { json = text ? JSON.parse(text) : null } catch { json = { raw: text } }
-  return { ok: res.ok, status: res.status, data: json }
+  let lastResponse = { ok: false, status: 0, data: null as any }
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(`${BLING_API}${path}`, {
+      ...opts,
+      headers: {
+        ...(opts.headers || {}),
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    })
+    const text = await res.text()
+    let json: any = null
+    try { json = text ? JSON.parse(text) : null } catch { json = { raw: text } }
+    lastResponse = { ok: res.ok, status: res.status, data: json }
+    if (res.status !== 429) return lastResponse
+    await new Promise(resolve => setTimeout(resolve, 1200 * (attempt + 1)))
+  }
+  return lastResponse
 }
 
 Deno.serve(async (req) => {
