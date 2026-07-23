@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const BLING_API = 'https://www.bling.com.br/Api/v3'
+const BLING_API = 'https://api.bling.com.br/Api/v3'
 
 async function refreshTokenIfNeeded(supabase: any, cred: any) {
   const expiresAt = cred.expires_at ? new Date(cred.expires_at).getTime() : 0
@@ -34,19 +34,25 @@ async function refreshTokenIfNeeded(supabase: any, cred: any) {
 }
 
 async function blingFetch(path: string, token: string, opts: RequestInit = {}) {
-  const res = await fetch(`${BLING_API}${path}`, {
-    ...opts,
-    headers: {
-      ...(opts.headers || {}),
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-  })
-  const text = await res.text()
-  let json: any = null
-  try { json = text ? JSON.parse(text) : null } catch { json = { raw: text } }
-  return { ok: res.ok, status: res.status, data: json }
+  let lastResponse = { ok: false, status: 0, data: null as any }
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(`${BLING_API}${path}`, {
+      ...opts,
+      headers: {
+        ...(opts.headers || {}),
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    })
+    const text = await res.text()
+    let json: any = null
+    try { json = text ? JSON.parse(text) : null } catch { json = { raw: text } }
+    lastResponse = { ok: res.ok, status: res.status, data: json }
+    if (res.status !== 429) return lastResponse
+    await new Promise(resolve => setTimeout(resolve, 1200 * (attempt + 1)))
+  }
+  return lastResponse
 }
 
 Deno.serve(async (req) => {
@@ -96,60 +102,44 @@ Deno.serve(async (req) => {
     if (!order) return json({ error: 'Pedido não encontrado' }, 404)
 
     if (action === 'issue') {
-      if (order.status !== 'pago' && order.status !== 'enviado' && order.status !== 'entregue') {
+      if (order.invoice_status === 'emitida' || order.bling_order_id) {
+        return json({
+          success: true,
+          skipped: true,
+          nfe_id: order.bling_order_id,
+          numero: order.invoice_number,
+          chave: order.invoice_key,
+          pdf_url: order.invoice_pdf_url,
+        })
+      }
+
+      if (!['pago', 'nota_emitida', 'separado', 'enviado', 'entregue'].includes(order.status)) {
         return json({ error: 'Pedido precisa estar pago para emitir NF-e.' }, 400)
       }
 
-      const { data: items } = await adminClient.from('order_items').select('*').eq('order_id', order_id)
-
-      // Monta payload mínimo da NF-e
-      const itens = (items || []).map((i: any) => ({
-        codigo: i.product_id || i.id,
-        descricao: i.product_name,
-        unidade: 'UN',
-        quantidade: i.quantity,
-        valor: Number(i.unit_price),
-        tipo: 'P',
-        origem: 0,
-      }))
-
-      const cpfDigits = (order.customer_cpf || '').replace(/\D/g, '')
-      const cepDigits = ((order.customer_address || '').match(/CEP:\s*([\d-]+)/)?.[1] || '').replace(/\D/g, '')
-
-      const nfePayload = {
-        tipo: 1,
-        finalidade: 1,
-        natureza_operacao: { id: 0 },
-        contato: {
-          nome: order.customer_name,
-          tipoPessoa: cpfDigits.length === 14 ? 'J' : 'F',
-          numeroDocumento: cpfDigits,
-          email: order.customer_email,
-          telefone: order.customer_phone || '',
-          endereco: { cep: cepDigits },
+      const automationRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/order-automation`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json',
         },
-        itens,
+        body: JSON.stringify({ order_id }),
+      })
+      const automationData = await automationRes.json().catch(() => ({}))
+      if (!automationRes.ok) return json({ error: 'Falha ao emitir NF-e', details: automationData }, automationRes.status)
+      if (automationData?.steps?.invoice?.error) {
+        return json({ error: automationData.steps.invoice.error, details: automationData.steps.invoice }, 400)
       }
 
-      const r = await blingFetch('/nfe', accessToken, { method: 'POST', body: JSON.stringify(nfePayload) })
-      if (!r.ok) return json({ error: 'Falha ao emitir NF-e', details: r.data }, r.status)
-
-      const nfeId = r.data?.data?.id
-      const numero = r.data?.data?.numero
-      const chave = r.data?.data?.chaveAcesso
-
-      // Tenta enviar para SEFAZ
-      if (nfeId) {
-        await blingFetch(`/nfe/${nfeId}/enviar`, accessToken, { method: 'POST' }).catch(() => {})
-      }
-
-      await adminClient.from('orders').update({
-        bling_order_id: nfeId ? String(nfeId) : order.bling_order_id,
-        invoice_number: numero ? String(numero) : null,
-        invoice_key: chave || null,
-      }).eq('id', order_id)
-
-      return json({ success: true, nfe_id: nfeId, numero, chave })
+      const { data: updatedOrder } = await adminClient.from('orders').select('*').eq('id', order_id).single()
+      return json({
+        success: true,
+        nfe_id: updatedOrder?.bling_order_id,
+        numero: updatedOrder?.invoice_number,
+        chave: updatedOrder?.invoice_key,
+        pdf_url: updatedOrder?.invoice_pdf_url,
+        automation: automationData,
+      })
     }
 
     if (action === 'print') {
