@@ -273,7 +273,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const melhorEnvioToken = Deno.env.get('MELHOR_ENVIO_TOKEN')
-    const blingApiKey = Deno.env.get('BLING_API_KEY')
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     const body = await req.json()
