@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/bling-oauth-callback`
     const basic = btoa(`${cred.client_id}:${cred.client_secret}`)
 
-    const tokenRes = await fetch('https://www.bling.com.br/Api/v3/oauth/token', {
+    const tokenRes = await fetch('https://api.bling.com.br/Api/v3/oauth/token', {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${basic}`,
