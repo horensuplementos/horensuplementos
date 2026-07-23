@@ -13,9 +13,9 @@ const FROM_ORIGIN = {
   name: 'Horen Suplementos',
   email: 'sitehorensuplementos@gmail.com',
   postal_code: '02613000',
-  address: 'Rua Exemplo',
+  address: 'Rua Doutor Cesar',
   number: '100',
-  neighborhood: 'Centro',
+  neighborhood: 'Santana',
   city: 'São Paulo',
   state_abbr: 'SP',
 }
@@ -108,6 +108,107 @@ async function blingFetch(path: string, token: string, opts: RequestInit = {}) {
   return { ok: res.ok, status: res.status, data: json }
 }
 
+function onlyDigits(value: string | null | undefined) {
+  return (value || '').replace(/\D/g, '')
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function blingDateTime() {
+  return new Date().toISOString().slice(0, 19).replace('T', ' ')
+}
+
+function getInvoiceAddress(customerAddress: string) {
+  const parsed = parseAddress(customerAddress || '')
+  if (parsed.postalCode && parsed.postalCode !== '00000000') return parsed
+  return {
+    street: FROM_ORIGIN.address,
+    number: FROM_ORIGIN.number,
+    neighborhood: FROM_ORIGIN.neighborhood,
+    city: FROM_ORIGIN.city,
+    state: FROM_ORIGIN.state_abbr,
+    postalCode: FROM_ORIGIN.postal_code,
+  }
+}
+
+async function findBlingContactId(token: string, document: string, email: string) {
+  const queries = [
+    document ? `/contatos?numeroDocumento=${encodeURIComponent(document)}&criterio=1&limite=10` : '',
+    email ? `/contatos?pesquisa=${encodeURIComponent(email)}&criterio=1&limite=10` : '',
+  ].filter(Boolean)
+
+  for (const query of queries) {
+    const res = await blingFetch(query, token)
+    const contact = res.ok ? res.data?.data?.[0] : null
+    if (contact?.id) return Number(contact.id)
+  }
+  return null
+}
+
+async function getOrCreateBlingContact(supabase: any, token: string, order: any, addr: ReturnType<typeof getInvoiceAddress>, document: string, isCnpj: boolean) {
+  if (!document || (document.length !== 11 && document.length !== 14)) {
+    throw new Error('CPF/CNPJ do cliente inválido ou ausente para emissão da NF-e.')
+  }
+
+  const existingId = await findBlingContactId(token, document, order.customer_email || '')
+  if (existingId) return existingId
+
+  const contactPayload = {
+    nome: order.customer_name || 'Cliente Horen',
+    codigo: String(order.user_id || order.id).slice(0, 20),
+    situacao: 'A',
+    tipo: isCnpj ? 'J' : 'F',
+    indicadorIe: 9,
+    numeroDocumento: document,
+    telefone: onlyDigits(order.customer_phone),
+    celular: onlyDigits(order.customer_phone),
+    email: order.customer_email || undefined,
+    emailNotaFiscal: order.customer_email || undefined,
+    endereco: {
+      geral: {
+        endereco: addr.street,
+        numero: addr.number,
+        bairro: addr.neighborhood,
+        cep: addr.postalCode,
+        municipio: addr.city,
+        uf: addr.state,
+      },
+      cobranca: {
+        endereco: addr.street,
+        numero: addr.number,
+        bairro: addr.neighborhood,
+        cep: addr.postalCode,
+        municipio: addr.city,
+        uf: addr.state,
+      },
+    },
+  }
+
+  const createRes = await blingFetch('/contatos', token, { method: 'POST', body: JSON.stringify(contactPayload) })
+  if (createRes.ok && createRes.data?.data?.id) return Number(createRes.data.data.id)
+
+  const fallbackId = await findBlingContactId(token, document, order.customer_email || '')
+  if (fallbackId) return fallbackId
+
+  await addLog(supabase, order.id, 'bling_contato_error', { endpoint: 'POST /contatos', payload: contactPayload, response: createRes.data, status: createRes.status })
+  throw new Error(`Falha ao criar contato no Bling: ${JSON.stringify(createRes.data).slice(0, 500)}`)
+}
+
+async function getPaymentMethodId(token: string, paymentMethod: string | null | undefined) {
+  const res = await blingFetch('/formas-pagamentos?limite=100', token)
+  const methods = res.ok && Array.isArray(res.data?.data) ? res.data.data : []
+  if (!methods.length) return null
+
+  const normalized = (paymentMethod || '').toLowerCase()
+  const preferred = methods.find((m: any) => {
+    const name = `${m.descricao || m.nome || ''}`.toLowerCase()
+    return normalized.includes('pix') ? name.includes('pix') : name.includes(normalized)
+  })
+  return Number((preferred || methods[0]).id)
+}
+
 async function issueBlingInvoice(supabase: any, order: any, items: any[]) {
   // Idempotency
   if (order.invoice_number || order.invoice_key) {
@@ -120,12 +221,15 @@ async function issueBlingInvoice(supabase: any, order: any, items: any[]) {
   }
 
   const token = await refreshBlingToken(supabase, cred)
-  const addr = parseAddress(order.customer_address || '')
-  const cpfDigits = (order.customer_cpf || '').replace(/\D/g, '')
+  const addr = getInvoiceAddress(order.customer_address || '')
+  const cpfDigits = onlyDigits(order.customer_cpf)
   const isCnpj = cpfDigits.length === 14
   const subtotal = Number(order.subtotal_amount || 0)
   const shipping = Number(order.shipping_price || 0)
   const discount = Number(order.discount_amount || 0)
+  const paymentMethodId = await getPaymentMethodId(token, order.payment_method)
+  if (!paymentMethodId) throw new Error('Nenhuma forma de pagamento encontrada no Bling para lançar a venda.')
+  const contactId = await getOrCreateBlingContact(supabase, token, order, addr, cpfDigits, isCnpj)
 
   const itens = (items || []).map((i: any) => ({
     codigo: String(i.product_id || i.id),
@@ -138,6 +242,7 @@ async function issueBlingInvoice(supabase: any, order: any, items: any[]) {
   }))
 
   const contato = {
+    id: contactId,
     nome: order.customer_name,
     tipoPessoa: isCnpj ? 'J' : 'F',
     numeroDocumento: cpfDigits,
@@ -160,14 +265,24 @@ async function issueBlingInvoice(supabase: any, order: any, items: any[]) {
   if (!blingOrderId) {
     const pedidoPayload = {
       data: new Date().toISOString().slice(0, 10),
+      dataSaida: today(),
+      dataPrevista: today(),
       numeroLoja: String(order.id).slice(0, 8),
       contato,
       itens,
       transporte: {
+        fretePorConta: order.delivery_method === 'pickup' ? 9 : 0,
         frete: shipping,
+        quantidadeVolumes: 1,
         volumes: [{ servico: order.shipping_service_name || 'Retirada', codigoRastreamento: order.tracking_code || '' }],
       },
       desconto: discount > 0 ? { valor: discount, unidade: 'REAL' } : undefined,
+      parcelas: [{
+        dataVencimento: today(),
+        valor: Number(order.total || 0),
+        formaPagamento: { id: paymentMethodId },
+        observacoes: order.payment_method || 'mercado_pago',
+      }],
       observacoes: `Pedido site #${String(order.id).slice(0, 8).toUpperCase()} - Pagamento: ${order.payment_method || 'mercado_pago'}`,
     }
     const pRes = await blingFetch('/pedidos/vendas', token, { method: 'POST', body: JSON.stringify(pedidoPayload) })
@@ -183,32 +298,16 @@ async function issueBlingInvoice(supabase: any, order: any, items: any[]) {
     await addLog(supabase, order.id, 'bling_pedido_ja_existente', { bling_order_id: blingOrderId })
   }
 
-  // 2. Emit NF-e
-  const nfePayload = {
-    tipo: 1, // saída
-    finalidade: 1, // normal
-    naturezaOperacao: { id: 0, descricao: 'Venda de mercadoria adquirida ou recebida de terceiros' },
-    dataOperacao: new Date().toISOString(),
-    contato,
-    itens: itens.map(i => ({ ...i, cfop: isCnpj ? '5102' : '5102' })),
-    transporte: {
-      frete: shipping,
-      modalidadeFrete: 0,
-    },
-    desconto: discount > 0 ? { valor: discount, unidade: 'REAL' } : undefined,
-    parcelas: [{ dataVencimento: new Date().toISOString().slice(0, 10), valor: Number(order.total || 0), observacoes: order.payment_method || 'mercado_pago' }],
-    observacoes: `Pedido site #${String(order.id).slice(0, 8).toUpperCase()}`,
-  }
-
-  await addLog(supabase, order.id, 'bling_nfe_solicitada', { endpoint: 'POST /nfe' })
-  const nRes = await blingFetch('/nfe', token, { method: 'POST', body: JSON.stringify(nfePayload) })
+  // 2. Generate NF-e from the sale order, so Bling applies the store's fiscal configuration.
+  await addLog(supabase, order.id, 'bling_nfe_solicitada', { endpoint: `POST /pedidos/vendas/${blingOrderId}/gerar-nfe` })
+  const nRes = await blingFetch(`/pedidos/vendas/${blingOrderId}/gerar-nfe`, token, { method: 'POST' })
   if (!nRes.ok) {
-    await addLog(supabase, order.id, 'bling_nfe_error', { endpoint: 'POST /nfe', payload: nfePayload, response: nRes.data, status: nRes.status })
+    await addLog(supabase, order.id, 'bling_nfe_error', { endpoint: `POST /pedidos/vendas/${blingOrderId}/gerar-nfe`, response: nRes.data, status: nRes.status })
     await supabase.from('orders').update({ invoice_status: 'erro', invoice_error: `NF-e Bling: ${JSON.stringify(nRes.data).slice(0, 400)}` }).eq('id', order.id)
     return { error: 'Falha ao emitir NF-e', endpoint: '/nfe', response: nRes.data }
   }
 
-  const nfeId = nRes.data?.data?.id
+  const nfeId = nRes.data?.data?.idNotaFiscal || nRes.data?.idNotaFiscal || nRes.data?.data?.id
   let numero: string | null = nRes.data?.data?.numero ? String(nRes.data.data.numero) : null
   let chave: string | null = nRes.data?.data?.chaveAcesso || null
 
@@ -244,6 +343,7 @@ async function issueBlingInvoice(supabase: any, order: any, items: any[]) {
     await supabase.from('orders').update({
       status: 'nota_emitida',
       invoice_status: 'emitida',
+      bling_order_id: String(nfeId),
       invoice_number: numero,
       invoice_key: chave,
       invoice_pdf_url: pdfUrl,
