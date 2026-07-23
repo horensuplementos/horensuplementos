@@ -7,10 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ChevronDown, ChevronUp, Package, Truck, Loader2, Copy, Trash2, FileText, Printer } from "lucide-react";
 
-const statusOptions = ["pendente", "pago", "enviado", "entregue", "cancelado"];
+const statusOptions = ["pendente", "pago", "nota_emitida", "separado", "enviado", "entregue", "cancelado"];
 const statusColors: Record<string, string> = {
   pendente: "bg-yellow-500/20 text-yellow-400",
   pago: "bg-green-500/20 text-green-400",
+  nota_emitida: "bg-teal-500/20 text-teal-300",
+  separado: "bg-cyan-500/20 text-cyan-300",
   enviado: "bg-blue-500/20 text-blue-400",
   entregue: "bg-emerald-500/20 text-emerald-400",
   cancelado: "bg-red-500/20 text-red-400",
