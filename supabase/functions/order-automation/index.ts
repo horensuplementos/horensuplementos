@@ -401,7 +401,7 @@ Deno.serve(async (req) => {
       .from('orders').select('*').eq('id', order_id).single()
     if (orderErr || !order) return json({ error: 'Pedido não encontrado' }, 404)
 
-    if (order.status !== 'pago') {
+    if (order.status !== 'pago' && order.invoice_status !== 'emitida' && !order.bling_order_id) {
       return json({ error: 'Pedido não está com status pago', status: order.status }, 400)
     }
 
