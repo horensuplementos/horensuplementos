@@ -38,6 +38,13 @@ const isWalletBalanceError = (message: string) => {
   return normalized.includes("saldo") && normalized.includes("insuficiente");
 };
 
+const canManageInvoice = (order: any) =>
+  ["pago", "nota_emitida", "separado", "enviado", "entregue"].includes(order.status) ||
+  Boolean(order.invoice_status || order.bling_order_id);
+
+const hasIssuedInvoice = (order: any) =>
+  order.invoice_status === "emitida" || Boolean(order.invoice_number || order.invoice_key || order.bling_order_id);
+
 const AdminOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -545,12 +552,12 @@ const AdminOrders = () => {
                     )}
 
                     {/* Bling NF-e */}
-                    {(order.status === "pago" || order.status === "enviado" || order.status === "entregue") && (
+                    {canManageInvoice(order) && (
                       <div className="space-y-2 border-t border-border pt-3">
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <FileText className="w-3 h-3" /> Nota Fiscal {order.invoice_number ? `· Nº ${order.invoice_number}` : ""}
                         </p>
-                        {!order.invoice_number ? (
+                        {!hasIssuedInvoice(order) ? (
                           <Button
                             onClick={() => issueInvoice(order)}
                             disabled={invoiceLoading === order.id}
