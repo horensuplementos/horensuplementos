@@ -7,6 +7,8 @@ const corsHeaders = {
 }
 
 const MELHOR_ENVIO_BASE = 'https://melhorenvio.com.br/api/v2/me'
+const BLING_API = 'https://www.bling.com.br/Api/v3'
+const HOREN_CNPJ = '65418995000150'
 const FROM_ORIGIN = {
   name: 'Horen Suplementos',
   email: 'sitehorensuplementos@gmail.com',
@@ -69,6 +71,194 @@ async function addLog(supabase: any, orderId: string, step: string, details: any
   }).eq('id', orderId)
 }
 
+async function refreshBlingToken(supabase: any, cred: any) {
+  const expiresAt = cred.expires_at ? new Date(cred.expires_at).getTime() : 0
+  if (expiresAt - Date.now() > 5 * 60 * 1000 && cred.access_token) return cred.access_token
+  if (!cred.refresh_token) throw new Error('Refresh token do Bling ausente. Reconecte em /admin/bling.')
+  const basic = btoa(`${cred.client_id}:${cred.client_secret}`)
+  const res = await fetch(`${BLING_API}/oauth/token`, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded', Accept: '1.0' },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: cred.refresh_token }),
+  })
+  const data = await res.json()
+  if (!res.ok || !data.access_token) throw new Error('Falha ao renovar token Bling: ' + JSON.stringify(data))
+  const expISO = new Date(Date.now() + (data.expires_in || 21600) * 1000).toISOString()
+  await supabase.from('bling_credentials').update({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || cred.refresh_token,
+    expires_at: expISO,
+  }).eq('id', cred.id)
+  return data.access_token
+}
+
+async function blingFetch(path: string, token: string, opts: RequestInit = {}) {
+  const res = await fetch(`${BLING_API}${path}`, {
+    ...opts,
+    headers: {
+      ...(opts.headers || {}),
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+  })
+  const text = await res.text()
+  let json: any = null
+  try { json = text ? JSON.parse(text) : null } catch { json = { raw: text } }
+  return { ok: res.ok, status: res.status, data: json }
+}
+
+async function issueBlingInvoice(supabase: any, order: any, items: any[]) {
+  // Idempotency
+  if (order.invoice_number || order.invoice_key) {
+    return { skipped: true, reason: 'Nota já emitida', number: order.invoice_number, key: order.invoice_key }
+  }
+
+  const { data: cred } = await supabase.from('bling_credentials').select('*').limit(1).maybeSingle()
+  if (!cred?.access_token || !cred?.client_id || !cred?.client_secret) {
+    return { skipped: true, reason: 'Bling não conectado. Acesse /admin/bling.' }
+  }
+
+  const token = await refreshBlingToken(supabase, cred)
+  const addr = parseAddress(order.customer_address || '')
+  const cpfDigits = (order.customer_cpf || '').replace(/\D/g, '')
+  const isCnpj = cpfDigits.length === 14
+  const subtotal = Number(order.subtotal_amount || 0)
+  const shipping = Number(order.shipping_price || 0)
+  const discount = Number(order.discount_amount || 0)
+
+  const itens = (items || []).map((i: any) => ({
+    codigo: String(i.product_id || i.id),
+    descricao: i.product_name,
+    unidade: 'UN',
+    quantidade: Number(i.quantity),
+    valor: Number(i.unit_price),
+    tipo: 'P',
+    origem: 0,
+  }))
+
+  const contato = {
+    nome: order.customer_name,
+    tipoPessoa: isCnpj ? 'J' : 'F',
+    numeroDocumento: cpfDigits,
+    email: order.customer_email,
+    telefone: order.customer_phone || '',
+    endereco: {
+      endereco: addr.street,
+      numero: addr.number,
+      bairro: addr.neighborhood,
+      cep: addr.postalCode,
+      municipio: addr.city,
+      uf: addr.state,
+    },
+  }
+
+  await addLog(supabase, order.id, 'bling_pedido_iniciado', { subtotal, shipping, discount })
+
+  // 1. Create sale order in Bling (if not created yet)
+  let blingOrderId = order.bling_order_id
+  if (!blingOrderId) {
+    const pedidoPayload = {
+      data: new Date().toISOString().slice(0, 10),
+      numeroLoja: String(order.id).slice(0, 8),
+      contato,
+      itens,
+      transporte: {
+        frete: shipping,
+        volumes: [{ servico: order.shipping_service_name || 'Retirada', codigoRastreamento: order.tracking_code || '' }],
+      },
+      desconto: discount > 0 ? { valor: discount, unidade: 'REAL' } : undefined,
+      observacoes: `Pedido site #${String(order.id).slice(0, 8).toUpperCase()} - Pagamento: ${order.payment_method || 'mercado_pago'}`,
+    }
+    const pRes = await blingFetch('/pedidos/vendas', token, { method: 'POST', body: JSON.stringify(pedidoPayload) })
+    if (!pRes.ok) {
+      await addLog(supabase, order.id, 'bling_pedido_error', { endpoint: 'POST /pedidos/vendas', payload: pedidoPayload, response: pRes.data, status: pRes.status })
+      await supabase.from('orders').update({ invoice_status: 'erro', invoice_error: `Pedido Bling: ${JSON.stringify(pRes.data).slice(0, 400)}` }).eq('id', order.id)
+      return { error: 'Falha ao criar pedido no Bling', endpoint: '/pedidos/vendas', response: pRes.data }
+    }
+    blingOrderId = String(pRes.data?.data?.id || '')
+    await supabase.from('orders').update({ bling_order_id: blingOrderId }).eq('id', order.id)
+    await addLog(supabase, order.id, 'bling_pedido_criado', { bling_order_id: blingOrderId })
+  } else {
+    await addLog(supabase, order.id, 'bling_pedido_ja_existente', { bling_order_id: blingOrderId })
+  }
+
+  // 2. Emit NF-e
+  const nfePayload = {
+    tipo: 1, // saída
+    finalidade: 1, // normal
+    naturezaOperacao: { id: 0, descricao: 'Venda de mercadoria adquirida ou recebida de terceiros' },
+    dataOperacao: new Date().toISOString(),
+    contato,
+    itens: itens.map(i => ({ ...i, cfop: isCnpj ? '5102' : '5102' })),
+    transporte: {
+      frete: shipping,
+      modalidadeFrete: 0,
+    },
+    desconto: discount > 0 ? { valor: discount, unidade: 'REAL' } : undefined,
+    parcelas: [{ dataVencimento: new Date().toISOString().slice(0, 10), valor: Number(order.total || 0), observacoes: order.payment_method || 'mercado_pago' }],
+    observacoes: `Pedido site #${String(order.id).slice(0, 8).toUpperCase()}`,
+  }
+
+  await addLog(supabase, order.id, 'bling_nfe_solicitada', { endpoint: 'POST /nfe' })
+  const nRes = await blingFetch('/nfe', token, { method: 'POST', body: JSON.stringify(nfePayload) })
+  if (!nRes.ok) {
+    await addLog(supabase, order.id, 'bling_nfe_error', { endpoint: 'POST /nfe', payload: nfePayload, response: nRes.data, status: nRes.status })
+    await supabase.from('orders').update({ invoice_status: 'erro', invoice_error: `NF-e Bling: ${JSON.stringify(nRes.data).slice(0, 400)}` }).eq('id', order.id)
+    return { error: 'Falha ao emitir NF-e', endpoint: '/nfe', response: nRes.data }
+  }
+
+  const nfeId = nRes.data?.data?.id
+  let numero: string | null = nRes.data?.data?.numero ? String(nRes.data.data.numero) : null
+  let chave: string | null = nRes.data?.data?.chaveAcesso || null
+
+  await addLog(supabase, order.id, 'bling_nfe_criada', { nfe_id: nfeId, numero, chave })
+
+  // 3. Send NF-e to SEFAZ
+  if (nfeId) {
+    const sendRes = await blingFetch(`/nfe/${nfeId}/enviar`, token, { method: 'POST' })
+    if (!sendRes.ok) {
+      await addLog(supabase, order.id, 'bling_nfe_send_warning', { endpoint: `POST /nfe/${nfeId}/enviar`, response: sendRes.data, status: sendRes.status })
+    } else {
+      await addLog(supabase, order.id, 'bling_nfe_enviada_sefaz', { nfe_id: nfeId })
+      // Re-read NF-e to grab numero/chave if not returned initially
+      const detRes = await blingFetch(`/nfe/${nfeId}`, token)
+      if (detRes.ok) {
+        numero = numero || (detRes.data?.data?.numero ? String(detRes.data.data.numero) : null)
+        chave = chave || detRes.data?.data?.chaveAcesso || null
+      }
+    }
+
+    // 4. Fetch PDF/XML links (best-effort)
+    const pdfRes = await blingFetch(`/nfe/${nfeId}/pdf`, token)
+    let pdfUrl: string | null = null
+    let xmlUrl: string | null = null
+    if (pdfRes.ok) {
+      const p = pdfRes.data?.data?.pdf || pdfRes.data?.data?.link || pdfRes.data?.data?.url
+      xmlUrl = pdfRes.data?.data?.xml || null
+      if (p) pdfUrl = p.startsWith('http') ? p : `data:application/pdf;base64,${p}`
+    } else {
+      await addLog(supabase, order.id, 'bling_nfe_pdf_warning', { response: pdfRes.data })
+    }
+
+    await supabase.from('orders').update({
+      status: 'nota_emitida',
+      invoice_status: 'emitida',
+      invoice_number: numero,
+      invoice_key: chave,
+      invoice_pdf_url: pdfUrl,
+      invoice_xml_url: xmlUrl,
+      invoice_issued_at: new Date().toISOString(),
+      invoice_error: null,
+    }).eq('id', order.id)
+
+    await addLog(supabase, order.id, 'bling_nfe_emitida', { numero, chave, pdf_url: pdfUrl })
+    return { success: true, nfe_id: nfeId, numero, chave, pdf_url: pdfUrl }
+  }
+
+  return { error: 'NF-e criada sem ID retornado', response: nRes.data }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -83,7 +273,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const melhorEnvioToken = Deno.env.get('MELHOR_ENVIO_TOKEN')
-    const blingApiKey = Deno.env.get('BLING_API_KEY')
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     const body = await req.json()
@@ -106,7 +295,21 @@ Deno.serve(async (req) => {
 
     const results: any = { order_id, steps: {} }
 
-    // ====== STEP 1: MELHOR ENVIO - Generate shipping label ======
+    // ====== STEP 1: BLING - Emit NF-e (must run before shipping so status flows pago -> nota_emitida -> enviado) ======
+    try {
+      results.steps.invoice = await issueBlingInvoice(supabase, order, items || [])
+    } catch (invErr: any) {
+      console.error('Bling automation error:', invErr)
+      await addLog(supabase, order_id, 'bling_exception', { error: invErr.message, stack: invErr.stack })
+      await supabase.from('orders').update({ invoice_status: 'erro', invoice_error: invErr.message }).eq('id', order_id)
+      results.steps.invoice = { error: invErr.message }
+    }
+
+    // Refresh order after invoice step (status may have changed)
+    const { data: refreshedOrder } = await supabase.from('orders').select('*').eq('id', order_id).single()
+    const orderNow = refreshedOrder || order
+
+    // ====== STEP 2: MELHOR ENVIO - Generate shipping label ======
     if (melhorEnvioToken && order.shipping_service_id) {
       try {
         const addr = parseAddress(order.customer_address || '')
@@ -152,7 +355,7 @@ Deno.serve(async (req) => {
           await supabase.from('orders').update({
             shipping_order_id: meOrderId,
             shipping_status: 'no_carrinho',
-            status: 'separado',
+              status: orderNow.status === 'nota_emitida' ? 'separado' : 'separado',
           }).eq('id', order_id)
           await addLog(supabase, order_id, 'melhor_envio_cart_ok', { me_order_id: meOrderId })
 
@@ -204,93 +407,6 @@ Deno.serve(async (req) => {
       }
     } else {
       results.steps.shipping = { skipped: true, reason: !melhorEnvioToken ? 'Token não configurado' : 'Sem serviço de frete' }
-    }
-
-    // ====== STEP 2: BLING - Create order and generate NF-e ======
-    if (blingApiKey) {
-      try {
-        const blingItems = (items || []).map((item: any) => ({
-          descricao: item.product_name,
-          quantidade: item.quantity,
-          valor: Number(item.unit_price),
-          codigo: item.product_id || item.id,
-        }))
-
-        // Create order in Bling
-        const blingOrderRes = await fetchRetry('https://www.bling.com.br/Api/v3/pedidos/vendas', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${blingApiKey}`,
-          },
-          body: JSON.stringify({
-            contato: {
-              nome: order.customer_name,
-              email: order.customer_email,
-              fone: order.customer_phone || '',
-            },
-            itens: blingItems,
-            observacoes: `Pedido #${order.id}`,
-            observacoesInternas: `Automação Horen - Payment: ${order.payment_id}`,
-          }),
-        })
-
-        const blingOrderData = await blingOrderRes.json()
-        if (!blingOrderRes.ok) {
-          console.error('Bling order error:', JSON.stringify(blingOrderData))
-          await addLog(supabase, order_id, 'bling_order_error', { error: blingOrderData })
-          results.steps.invoice = { error: 'Falha ao criar pedido no Bling' }
-        } else {
-          const blingId = blingOrderData.data?.id
-          await supabase.from('orders').update({ bling_order_id: String(blingId) }).eq('id', order_id)
-          await addLog(supabase, order_id, 'bling_order_ok', { bling_id: blingId })
-
-          // Generate NF-e
-          const nfeRes = await fetchRetry(`https://www.bling.com.br/Api/v3/nfe`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${blingApiKey}`,
-            },
-            body: JSON.stringify({
-              tipo: 1, // NF-e de saída
-              contato: {
-                nome: order.customer_name,
-                email: order.customer_email,
-              },
-              itens: blingItems.map(item => ({
-                ...item,
-                tipo: 'P',
-                origem: 0,
-              })),
-            }),
-          })
-
-          const nfeData = await nfeRes.json()
-          if (!nfeRes.ok) {
-            console.error('NF-e error:', JSON.stringify(nfeData))
-            await addLog(supabase, order_id, 'bling_nfe_error', { error: nfeData })
-            results.steps.invoice = { error: 'Falha ao gerar NF-e' }
-          } else {
-            const invoiceNumber = nfeData.data?.numero
-            const invoiceKey = nfeData.data?.chaveAcesso
-
-            await supabase.from('orders').update({
-              invoice_number: invoiceNumber ? String(invoiceNumber) : null,
-              invoice_key: invoiceKey || null,
-            }).eq('id', order_id)
-
-            await addLog(supabase, order_id, 'bling_nfe_ok', { numero: invoiceNumber, chave: invoiceKey })
-            results.steps.invoice = { success: true, number: invoiceNumber, key: invoiceKey }
-          }
-        }
-      } catch (blingErr: any) {
-        console.error('Bling automation error:', blingErr)
-        await addLog(supabase, order_id, 'bling_exception', { error: blingErr.message })
-        results.steps.invoice = { error: blingErr.message }
-      }
-    } else {
-      results.steps.invoice = { skipped: true, reason: 'BLING_API_KEY não configurado' }
     }
 
     return json(results)
