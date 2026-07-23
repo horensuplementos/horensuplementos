@@ -7,7 +7,7 @@ const corsHeaders = {
 }
 
 const MELHOR_ENVIO_BASE = 'https://melhorenvio.com.br/api/v2/me'
-const BLING_API = 'https://www.bling.com.br/Api/v3'
+const BLING_API = 'https://api.bling.com.br/Api/v3'
 const HOREN_CNPJ = '65418995000150'
 const FROM_ORIGIN = {
   name: 'Horen Suplementos',

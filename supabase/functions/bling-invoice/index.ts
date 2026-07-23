@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const BLING_API = 'https://www.bling.com.br/Api/v3'
+const BLING_API = 'https://api.bling.com.br/Api/v3'
 
 async function refreshTokenIfNeeded(supabase: any, cred: any) {
   const expiresAt = cred.expires_at ? new Date(cred.expires_at).getTime() : 0
