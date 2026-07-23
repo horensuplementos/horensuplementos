@@ -65,12 +65,13 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
     const token = authHeader.replace('Bearer ', '')
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token)
-    if (claimsErr || !claims?.claims?.sub) return json({ error: 'Unauthorized' }, 401)
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token)
+    const userId = userData?.user?.id
+    if (userErr || !userId) return json({ error: 'Unauthorized' }, 401)
 
     // Verifica se é admin/operator
     const { data: isAllowed } = await supabase.rpc('has_admin_permission_level', {
-      _user_id: claims.claims.sub,
+      _user_id: userId,
       _levels: ['admin', 'operator'],
     })
     if (!isAllowed) return json({ error: 'Sem permissão' }, 403)
