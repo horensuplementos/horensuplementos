@@ -513,9 +513,13 @@ export type Database = {
           delivery_method: string
           discount_amount: number
           id: string
+          invoice_error: string | null
+          invoice_issued_at: string | null
           invoice_key: string | null
           invoice_number: string | null
           invoice_pdf_url: string | null
+          invoice_status: string | null
+          invoice_xml_url: string | null
           payment_id: string | null
           payment_method: string | null
           shipping_order_id: string | null
@@ -545,9 +549,13 @@ export type Database = {
           delivery_method?: string
           discount_amount?: number
           id?: string
+          invoice_error?: string | null
+          invoice_issued_at?: string | null
           invoice_key?: string | null
           invoice_number?: string | null
           invoice_pdf_url?: string | null
+          invoice_status?: string | null
+          invoice_xml_url?: string | null
           payment_id?: string | null
           payment_method?: string | null
           shipping_order_id?: string | null
@@ -577,9 +585,13 @@ export type Database = {
           delivery_method?: string
           discount_amount?: number
           id?: string
+          invoice_error?: string | null
+          invoice_issued_at?: string | null
           invoice_key?: string | null
           invoice_number?: string | null
           invoice_pdf_url?: string | null
+          invoice_status?: string | null
+          invoice_xml_url?: string | null
           payment_id?: string | null
           payment_method?: string | null
           shipping_order_id?: string | null
