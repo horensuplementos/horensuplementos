@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Calculator, Calendar as CalendarIcon, Flame, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 import { useSiteSection } from "@/contexts/SiteContentContext";
 import { getSectionItems, getSectionText } from "@/lib/siteContent";
 
+type CalculatorMode = "creatina" | "tmb";
+
 const Calculators = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { section } = useSiteSection("calculators_section");
   const text = getSectionText(section, {
     title: "Calculadoras",
@@ -24,6 +27,17 @@ const Calculators = () => {
   const items = getSectionItems<any>(section, []);
   const creatinaCfg = items.find((i) => i?.kind === "creatina") || {};
   const tmbCfg = items.find((i) => i?.kind === "tmb") || {};
+
+  const [activeMode, setActiveMode] = useState<CalculatorMode>(() => {
+    if (location.hash === "#tmb") return "tmb";
+    return "creatina";
+  });
+
+  useEffect(() => {
+    if (location.hash === "#tmb") setActiveMode("tmb");
+    else if (location.hash === "#creatina") setActiveMode("creatina");
+  }, [location.hash]);
+
   const ctaSize = (creatinaCfg.cta_size || "lg") as "sm" | "default" | "lg";
 
   // Creatina
@@ -90,9 +104,36 @@ const Calculators = () => {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Creatina */}
+          <div className="mb-8 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveMode("creatina")}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-body font-medium transition-colors ${
+                activeMode === "creatina"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background border-input text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              <CalendarIcon className="w-4 h-4" />
+              {creatinaCfg.title || "Duração da Creatina"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveMode("tmb")}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-body font-medium transition-colors ${
+                activeMode === "tmb"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background border-input text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              <Flame className="w-4 h-4" />
+              {tmbCfg.title || "Taxa Metabólica Basal"}
+            </button>
+          </div>
+
+          {activeMode === "creatina" && (
             <motion.section
+              key="creatina"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
@@ -133,12 +174,14 @@ const Calculators = () => {
                 )}
               </div>
             </motion.section>
+          )}
 
-            {/* TMB */}
+          {activeMode === "tmb" && (
             <motion.section
+              key="tmb"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.1 }}
               className="bg-card border border-border rounded-2xl p-8 shadow-sm"
             >
               <div className="flex items-center gap-3 mb-6">
@@ -210,7 +253,7 @@ const Calculators = () => {
                 )}
               </div>
             </motion.section>
-          </div>
+          )}
 
           <div className="mt-12 text-center">
             <Button onClick={() => navigate(text.cta_link || "/#produtos")} size={ctaSize}>
@@ -225,3 +268,4 @@ const Calculators = () => {
 };
 
 export default Calculators;
+
