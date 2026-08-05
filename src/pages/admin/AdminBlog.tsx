@@ -82,6 +82,7 @@ const AdminBlog = () => {
       word_count: Number(automation.word_count) || 800,
       tone: automation.tone || "profissional",
       categories: automation.categories || [],
+      publish_date: automation.publish_date || null,
       publish_time: automation.publish_time || "08:00",
       auto_publish: !!automation.auto_publish,
     };
@@ -242,6 +243,10 @@ const AdminBlog = () => {
             <div>
               <Label>Tom</Label>
               <Input value={automation.tone} onChange={(e) => setAutomation({ ...automation, tone: e.target.value })} placeholder="profissional, casual, técnico..." />
+            </div>
+            <div>
+              <Label>Data de publicação</Label>
+              <Input type="date" value={automation.publish_date || ""} onChange={(e) => setAutomation({ ...automation, publish_date: e.target.value })} />
             </div>
             <div>
               <Label>Horário de publicação</Label>
