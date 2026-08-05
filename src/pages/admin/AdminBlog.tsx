@@ -66,7 +66,7 @@ const AdminBlog = () => {
   const [aiTopic, setAiTopic] = useState("");
   const [automation, setAutomation] = useState<any>({
     enabled: false, word_count: 800, tone: "profissional",
-    categories: ["Creatina","Whey","Hipertrofia"], publish_time: "08:00", auto_publish: false,
+    categories: ["Creatina","Whey","Hipertrofia"], publish_date: "", publish_time: "08:00", auto_publish: false,
   });
   const [showSettings, setShowSettings] = useState(false);
 
