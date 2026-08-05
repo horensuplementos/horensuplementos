@@ -162,6 +162,7 @@ export type Database = {
           enabled: boolean
           id: number
           last_run_at: string | null
+          publish_date: string | null
           publish_time: string
           tone: string
           updated_at: string
@@ -173,6 +174,7 @@ export type Database = {
           enabled?: boolean
           id?: number
           last_run_at?: string | null
+          publish_date?: string | null
           publish_time?: string
           tone?: string
           updated_at?: string
@@ -184,6 +186,7 @@ export type Database = {
           enabled?: boolean
           id?: number
           last_run_at?: string | null
+          publish_date?: string | null
           publish_time?: string
           tone?: string
           updated_at?: string
