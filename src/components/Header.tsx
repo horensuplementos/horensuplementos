@@ -12,6 +12,7 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [calcDropdownOpen, setCalcDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,18 +71,27 @@ const Header = () => {
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) =>
             link.label === "Calculadoras" ? (
-              <div key={link.href} className="relative group">
+              <div key={link.href} className="relative">
                 <button
-                  onClick={() => handleNavClick(link.href)}
+                  type="button"
+                  onClick={() => setCalcDropdownOpen((open) => !open)}
+                  aria-expanded={calcDropdownOpen}
                   className="flex items-center gap-1 text-sm font-body font-medium text-muted-foreground hover:text-primary transition-colors"
                 >
                   {link.label}
                   <ChevronDown className="w-3.5 h-3.5" />
                 </button>
-                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div
+                  className={`absolute left-1/2 -translate-x-1/2 top-full pt-3 transition-all duration-200 z-50 ${
+                    calcDropdownOpen ? "opacity-100 visible" : "opacity-0 invisible"
+                  }`}
+                >
                   <div className="w-72 bg-card border border-border rounded-xl shadow-lg p-2">
                     <button
-                      onClick={() => navigate("/calculadoras#creatina")}
+                      onClick={() => {
+                        setCalcDropdownOpen(false);
+                        navigate("/calculadoras#creatina");
+                      }}
                       className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left"
                     >
                       <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -93,7 +103,10 @@ const Header = () => {
                       </div>
                     </button>
                     <button
-                      onClick={() => navigate("/calculadoras#tmb")}
+                      onClick={() => {
+                        setCalcDropdownOpen(false);
+                        navigate("/calculadoras#tmb");
+                      }}
                       className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-secondary transition-colors text-left"
                     >
                       <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
