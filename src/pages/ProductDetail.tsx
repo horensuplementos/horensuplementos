@@ -43,6 +43,7 @@ const ProductDetail = () => {
     image_url: p.image_url,
     weight: p.weight,
     category: p.category,
+    stock: p.stock,
   });
 
   if (loading) {

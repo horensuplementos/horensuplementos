@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Clock, Calendar } from "lucide-react";
 import Header from "@/components/Header";
@@ -21,6 +21,15 @@ type Post = {
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 
+const renderInlineMarkdown = (content: string): ReactNode[] => {
+  const parts = content.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) =>
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={index} className="text-primary">{part.slice(2, -2)}</strong>
+      : part
+  );
+};
+
 const renderMarkdown = (content: string) =>
   content.split("\n").map((line, i) => {
     const trimmed = line.trim();
@@ -28,43 +37,31 @@ const renderMarkdown = (content: string) =>
     if (trimmed.startsWith("## "))
       return (
         <h2 key={i} className="font-heading text-2xl font-bold text-foreground mt-10 mb-4">
-          {trimmed.replace("## ", "")}
+          {renderInlineMarkdown(trimmed.replace("## ", ""))}
         </h2>
       );
     if (trimmed.startsWith("### "))
       return (
         <h3 key={i} className="font-heading text-lg font-semibold text-foreground mt-6 mb-3">
-          {trimmed.replace("### ", "")}
+          {renderInlineMarkdown(trimmed.replace("### ", ""))}
         </h3>
       );
     if (trimmed.startsWith("- "))
       return (
         <li key={i} className="text-foreground/80 ml-4 list-disc">
-          <span
-            dangerouslySetInnerHTML={{
-              __html: trimmed.replace("- ", "").replace(/\*\*(.*?)\*\*/g, '<strong class="text-primary">$1</strong>'),
-            }}
-          />
+          <span>{renderInlineMarkdown(trimmed.replace("- ", ""))}</span>
         </li>
       );
     if (/^\d+\./.test(trimmed))
       return (
         <li key={i} className="text-foreground/80 ml-4 list-decimal">
-          <span
-            dangerouslySetInnerHTML={{
-              __html: trimmed.replace(/^\d+\.\s*/, "").replace(/\*\*(.*?)\*\*/g, '<strong class="text-primary">$1</strong>'),
-            }}
-          />
+          <span>{renderInlineMarkdown(trimmed.replace(/^\d+\.\s*/, ""))}</span>
         </li>
       );
     return (
-      <p
-        key={i}
-        className="text-foreground/80 leading-relaxed mb-4"
-        dangerouslySetInnerHTML={{
-          __html: trimmed.replace(/\*\*(.*?)\*\*/g, '<strong class="text-primary">$1</strong>'),
-        }}
-      />
+      <p key={i} className="text-foreground/80 leading-relaxed mb-4">
+        {renderInlineMarkdown(trimmed)}
+      </p>
     );
   });
 

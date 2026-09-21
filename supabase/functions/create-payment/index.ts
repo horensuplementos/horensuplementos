@@ -104,28 +104,67 @@ Deno.serve(async (req) => {
 
     const { first_name, last_name } = splitFullName(payerName)
 
-    // Fetch order items
-    const { data: items } = await supabase
+    // Fetch order items and current products. The database may contain an old
+    // pending order, so always revalidate before charging the customer.
+    const { data: items, error: itemsError } = await supabase
       .from('order_items')
       .select('*')
       .eq('order_id', order_id)
+    if (itemsError || !items?.length) return json({ error: 'Pedido sem itens para pagamento' }, 400)
+
+    const productIds = items.map((item: any) => item.product_id).filter(Boolean)
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('id, name, price, stock, active')
+      .in('id', productIds)
+    if (productsError || !products || products.length !== productIds.length) {
+      return json({ error: 'Um ou mais produtos não estão mais disponíveis.' }, 409)
+    }
+    const productsById = new Map(products.map((product: any) => [product.id, product]))
+    let currentSubtotal = 0
+    for (const item of items) {
+      const product: any = productsById.get(item.product_id)
+      if (!product?.active || Number(product.stock) < Number(item.quantity)) {
+        return json({ error: `Estoque insuficiente para ${product?.name || 'um produto do pedido'}.` }, 409)
+      }
+      currentSubtotal += Number(product.price) * Number(item.quantity)
+    }
+
+    // Persist the current server price; coupon totals are recalculated by the
+    // existing database trigger instead of trusting a browser total.
+    const { data: repricedOrder, error: repriceError } = await supabase
+      .from('orders')
+      .update({ subtotal_amount: currentSubtotal })
+      .eq('id', order_id)
+      .select('*')
+      .single()
+    if (repriceError || !repricedOrder) return json({ error: 'Não foi possível validar o total do pedido.' }, 409)
 
     // Build MP preference
-    const mpItems = (items || [])
-      .map((item: any) => ({
-        title: String(item.product_name || '').trim(),
-        quantity: Number(item.quantity),
-        unit_price: Number(item.unit_price),
-        currency_id: 'BRL',
-      }))
-      .filter((item: any) => item.title && item.quantity > 0 && Number.isFinite(item.unit_price) && item.unit_price > 0)
+    let remainingDiscount = Math.min(Number(repricedOrder.discount_amount || 0), currentSubtotal)
+    const mpItems = items
+      .map((item: any) => {
+        const quantity = Number(item.quantity)
+        const unitPrice = Number(productsById.get(item.product_id)?.price)
+        const lineTotal = unitPrice * quantity
+        const lineDiscount = Math.min(remainingDiscount, lineTotal)
+        remainingDiscount -= lineDiscount
+        return {
+          title: `${String(productsById.get(item.product_id)?.name || item.product_name || '').trim()}${quantity > 1 ? ` (x${quantity})` : ''}`,
+          // A single line preserves cent precision after applying a coupon.
+          quantity: 1,
+          unit_price: Math.round((lineTotal - lineDiscount) * 100) / 100,
+          currency_id: 'BRL',
+        }
+      })
+      .filter((item: any) => item.title && Number.isFinite(item.unit_price) && item.unit_price > 0)
 
     // Add shipping as item if present
-    if (order.shipping_price && Number(order.shipping_price) > 0) {
+    if (repricedOrder.shipping_price && Number(repricedOrder.shipping_price) > 0) {
       mpItems.push({
-        title: `Frete - ${order.shipping_service_name || 'Entrega'}`,
+        title: `Frete - ${repricedOrder.shipping_service_name || 'Entrega'}`,
         quantity: 1,
-        unit_price: Number(order.shipping_price),
+        unit_price: Number(repricedOrder.shipping_price),
         currency_id: 'BRL',
       })
     }

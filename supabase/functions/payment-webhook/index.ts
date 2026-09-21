@@ -95,6 +95,13 @@ Deno.serve(async (req) => {
       return json({ ok: true, already_processed: true })
     }
 
+    const paidAmount = Number(payment.transaction_amount)
+    const expectedAmount = Number(order.total)
+    if (payment.currency_id !== 'BRL' || !Number.isFinite(paidAmount) || Math.abs(paidAmount - expectedAmount) > 0.01) {
+      console.error('Payment amount mismatch:', { orderId, paidAmount, expectedAmount, currency: payment.currency_id })
+      return json({ error: 'Valor ou moeda do pagamento não corresponde ao pedido' }, 409)
+    }
+
     // Update order to "pago"
     const logEntry = {
       step: 'pagamento_aprovado',

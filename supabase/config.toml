@@ -9,3 +9,9 @@ project_id = "ycmhgmxstrjoiysbbpxh"
     verify_jwt = true
   [functions.bling-oauth-callback]
     verify_jwt = false
+  [functions.shipping-label]
+    verify_jwt = true
+  [functions.create-order]
+    verify_jwt = true
+  [functions.manage-bling]
+    verify_jwt = true

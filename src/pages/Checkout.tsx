@@ -60,7 +60,7 @@ const BRAZILIAN_STATES = [
 ];
 
 const Checkout = () => {
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, totalPrice, clearCart, sessionKey } = useCart();
   const [user, setUser] = useState<any>(null);
   const [form, setForm] = useState({
     name: "",
@@ -491,62 +491,20 @@ const Checkout = () => {
       (window as any).__horenPaymentWindow = paymentWindow;
     }
 
-    const complementPart = address.complement ? ` (${address.complement})` : "";
-    const shippingAddress = `${address.street}, ${address.number}${complementPart} - ${address.neighborhood}, ${address.city} - ${address.state}, CEP: ${address.zip_code}`;
-    const fullAddress = isPickup
-      ? `RETIRADA NA LOJA — ${pickupSettings.address || "São Paulo/SP"}`
-      : shippingAddress;
-    const shippingServiceName = isPickup
-      ? "Retirada na Loja"
-      : `${selectedShipping!.company} - ${selectedShipping!.name}`;
-    const shippingServiceId = isPickup ? 0 : selectedShipping!.id;
-    const shippingPrice = isPickup ? 0 : selectedShipping!.price;
-
     try {
-      const { data: order, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          user_id: user.id,
-          subtotal_amount: subtotal,
-          discount_amount: discountAmount,
-          coupon_id: appliedCoupon?.coupon_id || null,
-          coupon_code: appliedCoupon?.code || null,
-          total: finalTotal,
-          customer_name: normalizedName,
-          customer_email: normalizedEmail,
-          customer_phone: form.phone || null,
-          customer_address: fullAddress,
-          customer_cpf: normalizedCpf || null,
-          status: "pendente",
-          shipping_service_id: shippingServiceId,
-          shipping_service_name: shippingServiceName,
-          shipping_price: shippingPrice,
+      const { data: orderData, error: orderError } = await supabase.functions.invoke("create-order", {
+        body: {
+          items: items.map((item) => ({ product_id: item.product.id, quantity: item.quantity })),
+          customer: { name: normalizedName, email: normalizedEmail, phone: form.phone || null, cpf: normalizedCpf },
           delivery_method: isPickup ? "pickup" : "shipping",
-        } as any)
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        unit_price: item.product.price,
-        product_name: item.product.name,
-      }));
-
-      const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
-      if (itemsError) throw itemsError;
-
-      await supabase
-        .from("profiles")
-        .update({
-          name: form.name,
-          phone: form.phone,
-          cpf: form.cpf,
-        } as any)
-        .eq("user_id", user.id);
+          address_id: isPickup ? null : selectedAddressId,
+          shipping_service_id: isPickup ? null : selectedShipping!.id,
+          coupon_code: appliedCoupon?.code || null,
+          cart_session_key: sessionKey,
+        },
+      });
+      if (orderError || !orderData?.order) throw orderError || new Error(orderData?.error || "Não foi possível criar o pedido.");
+      const order = orderData.order;
 
       // Create Mercado Pago payment and redirect
       toast({ title: "Redirecionando para pagamento..." });

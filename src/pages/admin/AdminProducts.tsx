@@ -31,6 +31,10 @@ interface ProductForm {
   ai_generated: boolean;
   ai_generated_at: string | null;
   ai_history: any[];
+  shipping_width_cm: string;
+  shipping_height_cm: string;
+  shipping_length_cm: string;
+  shipping_weight_kg: string;
 }
 
 const emptyForm: ProductForm = {
@@ -55,6 +59,10 @@ const emptyForm: ProductForm = {
   ai_generated: false,
   ai_generated_at: null,
   ai_history: [],
+  shipping_width_cm: "20",
+  shipping_height_cm: "10",
+  shipping_length_cm: "30",
+  shipping_weight_kg: "0.5",
 };
 
 const AdminProducts = () => {
@@ -112,6 +120,11 @@ const AdminProducts = () => {
       toast({ title: "Preço inválido", description: "O preço não pode ser negativo.", variant: "destructive" });
       return;
     }
+    const logistics = [form.shipping_width_cm, form.shipping_height_cm, form.shipping_length_cm, form.shipping_weight_kg].map(Number);
+    if (logistics.some((value) => !Number.isFinite(value) || value <= 0)) {
+      toast({ title: "Dados logísticos inválidos", description: "Informe dimensões e peso maiores que zero.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
     const payload = {
@@ -136,6 +149,10 @@ const AdminProducts = () => {
       ai_generated: form.ai_generated,
       ai_generated_at: form.ai_generated_at,
       ai_history: form.ai_history || [],
+      shipping_width_cm: logistics[0],
+      shipping_height_cm: logistics[1],
+      shipping_length_cm: logistics[2],
+      shipping_weight_kg: logistics[3],
     } as any;
 
     if (editingId) {
@@ -185,6 +202,10 @@ const AdminProducts = () => {
       ai_generated: !!p.ai_generated,
       ai_generated_at: p.ai_generated_at || null,
       ai_history: p.ai_history || [],
+      shipping_width_cm: String(p.shipping_width_cm ?? 20),
+      shipping_height_cm: String(p.shipping_height_cm ?? 10),
+      shipping_length_cm: String(p.shipping_length_cm ?? 30),
+      shipping_weight_kg: String(p.shipping_weight_kg ?? 0.5),
     });
     setEditingId(product.id);
     setShowForm(true);
@@ -346,6 +367,28 @@ const AdminProducts = () => {
                   }}
                   required
                 />
+              </div>
+              <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3 rounded-xl border border-border bg-secondary/30 p-4">
+                <p className="col-span-full text-sm font-heading font-semibold text-foreground">Dados para cálculo de frete</p>
+                {[
+                  ["Largura (cm)", "shipping_width_cm", "0.1"],
+                  ["Altura (cm)", "shipping_height_cm", "0.1"],
+                  ["Comprimento (cm)", "shipping_length_cm", "0.1"],
+                  ["Peso (kg)", "shipping_weight_kg", "0.001"],
+                ].map(([label, key, step]) => (
+                  <div key={key}>
+                    <label className="text-xs font-body text-muted-foreground mb-1 block">{label}</label>
+                    <input
+                      type="number"
+                      min="0.001"
+                      step={step}
+                      required
+                      className={inputClass}
+                      value={form[key as keyof Pick<ProductForm, "shipping_width_cm" | "shipping_height_cm" | "shipping_length_cm" | "shipping_weight_kg">]}
+                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                    />
+                  </div>
+                ))}
               </div>
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Imagem</label>

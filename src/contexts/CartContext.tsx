@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface CartProduct {
   id: string;
@@ -7,6 +8,7 @@ export interface CartProduct {
   image_url?: string | null;
   weight?: string | null;
   category?: string | null;
+  stock?: number | null;
 }
 
 export interface CartItem {
@@ -26,21 +28,37 @@ interface CartContextType {
   closeCart: () => void;
   totalItems: number;
   totalPrice: number;
+  sessionKey: string;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(() => {
+    try {
+      const stored = localStorage.getItem("horen_cart_items");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [sessionKey, setSessionKey] = useState(() => {
+    const storageKey = "horen_cart_session_key";
+    const existing = localStorage.getItem(storageKey);
+    if (existing) return existing;
+    const next = crypto.randomUUID();
+    localStorage.setItem(storageKey, next);
+    return next;
+  });
   const [isOpen, setIsOpen] = useState(false);
 
   const addItem = useCallback((product: CartProduct) => {
     setItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+          return prev.map((item) =>
+            item.product.id === product.id
+            ? { ...item, quantity: product.stock != null ? Math.min(item.quantity + 1, product.stock) : item.quantity + 1 }
             : item
         );
       }
@@ -60,12 +78,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setItems((prev) =>
       prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
+        item.product.id === productId
+          ? { ...item, quantity: item.product.stock != null ? Math.min(quantity, item.product.stock) : quantity }
+          : item
       )
     );
   }, []);
 
-  const clearCart = useCallback(() => setItems([]), []);
+  const clearCart = useCallback(() => {
+    const nextSessionKey = crypto.randomUUID();
+    localStorage.setItem("horen_cart_session_key", nextSessionKey);
+    setItems([]);
+    setSessionKey(nextSessionKey);
+  }, []);
   const toggleCart = useCallback(() => setIsOpen((p) => !p), []);
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
@@ -76,11 +101,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     0
   );
 
+  useEffect(() => {
+    localStorage.setItem("horen_cart_items", JSON.stringify(items));
+    const syncCart = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const serializedItems = JSON.parse(JSON.stringify(items));
+      await supabase.rpc("upsert_cart_session", {
+        p_session_id: sessionKey,
+        p_user_id: session?.user.id || null,
+        p_email: session?.user.email || null,
+        p_status: "active",
+        p_items: serializedItems,
+        p_items_count: items.reduce((sum, item) => sum + item.quantity, 0),
+        p_cart_total: items.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
+        p_metadata: { source: "storefront" },
+      });
+    };
+    void syncCart();
+  }, [items, sessionKey]);
+
   return (
     <CartContext.Provider
       value={{
         items, isOpen, addItem, removeItem, updateQuantity,
-        clearCart, toggleCart, openCart, closeCart, totalItems, totalPrice,
+        clearCart, toggleCart, openCart, closeCart, totalItems, totalPrice, sessionKey,
       }}
     >
       {children}
