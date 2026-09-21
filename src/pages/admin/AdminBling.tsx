@@ -14,7 +14,7 @@ const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/bling-oauth-callback`;
 const AdminBling = () => {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
-  const [credId, setCredId] = useState<string | null>(null);
+  const [configured, setConfigured] = useState(false);
   const [connected, setConnected] = useState(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,16 +23,15 @@ const AdminBling = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await (supabase as any)
-      .from("bling_credentials")
-      .select("*")
-      .limit(1)
-      .maybeSingle();
-    if (data) {
-      setCredId(data.id);
-      setClientId(data.client_id || "");
-      setClientSecret(data.client_secret || "");
-      setConnected(!!data.access_token);
+    const { data, error } = await supabase.functions.invoke("manage-bling", {
+      body: { action: "status" },
+    });
+    if (error || data?.error) {
+      toast({ title: "Erro ao carregar integração", description: data?.error || error?.message, variant: "destructive" });
+    } else if (data) {
+      setConfigured(Boolean(data.configured));
+      setClientSecret("");
+      setConnected(Boolean(data.connected));
       setExpiresAt(data.expires_at || null);
     }
     setLoading(false);
@@ -46,29 +45,26 @@ const AdminBling = () => {
       return;
     }
     setSaving(true);
-    if (credId) {
-      await (supabase as any).from("bling_credentials").update({
-        client_id: clientId, client_secret: clientSecret,
-      }).eq("id", credId);
-    } else {
-      const { data } = await (supabase as any).from("bling_credentials").insert({
-        client_id: clientId, client_secret: clientSecret,
-      }).select().single();
-      if (data) setCredId(data.id);
-    }
+    const { data, error } = await supabase.functions.invoke("manage-bling", {
+      body: { action: "configure", client_id: clientId, client_secret: clientSecret },
+    });
     setSaving(false);
+    if (error || data?.error) {
+      toast({ title: "Erro ao salvar credenciais", description: data?.error || error?.message, variant: "destructive" });
+      return;
+    }
+    setClientSecret("");
     toast({ title: "Credenciais salvas. Agora clique em Conectar." });
     load();
   };
 
-  const connect = () => {
-    if (!clientId) {
-      toast({ title: "Salve o Client ID antes de conectar", variant: "destructive" });
+  const connect = async () => {
+    const { data, error } = await supabase.functions.invoke("manage-bling", { body: { action: "start_oauth" } });
+    if (error || data?.error || !data?.url) {
+      toast({ title: "Erro ao iniciar conexão", description: data?.error || error?.message, variant: "destructive" });
       return;
     }
-    const state = crypto.randomUUID();
-    const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&state=${state}`;
-    window.location.href = url;
+    window.location.href = data.url;
   };
 
   const copy = (text: string, label: string) => {
@@ -115,7 +111,7 @@ const AdminBling = () => {
           <CardContent className="space-y-4">
             <div>
               <Label>Client ID</Label>
-              <Input value={clientId} onChange={(e) => setClientId(e.target.value)} disabled={loading} />
+              <Input value={clientId} placeholder={configured ? "Client ID configurado — informe um novo apenas para substituir" : undefined} onChange={(e) => setClientId(e.target.value)} disabled={loading} />
             </div>
             <div>
               <Label>Client Secret</Label>

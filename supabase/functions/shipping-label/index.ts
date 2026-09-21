@@ -2,6 +2,7 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const MELHOR_ENVIO_BASE = 'https://melhorenvio.com.br/api/v2/me'
@@ -130,6 +131,21 @@ Deno.serve(async (req) => {
     })
 
   try {
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'Não autenticado' }, 401)
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const authClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!)
+    const tokenValue = authHeader.slice(7)
+    const { data: { user }, error: userError } = await authClient.auth.getUser(tokenValue)
+    if (userError || !user) return json({ error: 'Token inválido' }, 401)
+
+    const { data: isAllowed } = await authClient.rpc('has_admin_permission_level', {
+      _user_id: user.id,
+      _levels: ['admin', 'operator'],
+    })
+    if (!isAllowed) return json({ error: 'Sem permissão para operar etiquetas.' }, 403)
+
     const token = Deno.env.get('MELHOR_ENVIO_TOKEN')
     if (!token) return json({ error: 'Token não configurado' }, 500)
 

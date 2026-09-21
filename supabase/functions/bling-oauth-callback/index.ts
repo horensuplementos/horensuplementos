@@ -6,6 +6,7 @@ Deno.serve(async (req) => {
   const url = new URL(req.url)
   const code = url.searchParams.get('code')
   const error = url.searchParams.get('error')
+  const state = url.searchParams.get('state')
 
   const html = (msg: string, ok: boolean) => `<!doctype html><html><head><meta charset="utf-8"><title>Bling OAuth</title>
     <style>body{font-family:system-ui;background:#002A3F;color:#f5e9d4;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
@@ -18,12 +19,23 @@ Deno.serve(async (req) => {
   if (error) {
     return new Response(html(`Erro retornado pelo Bling: ${error}`, false), { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
   }
-  if (!code) {
-    return new Response(html('Código de autorização ausente.', false), { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+  if (!code || !state) {
+    return new Response(html('Código ou estado de autorização ausente.', false), { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
   }
 
   try {
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+    const { data: oauthState } = await supabase
+      .from('bling_oauth_states')
+      .select('state')
+      .eq('state', state)
+      .is('consumed_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle()
+    if (!oauthState) {
+      return new Response(html('Esta autorização é inválida ou expirou. Inicie a conexão novamente pelo painel.', false), { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    }
 
     const { data: cred } = await supabase.from('bling_credentials').select('*').limit(1).maybeSingle()
     if (!cred?.client_id || !cred?.client_secret) {
@@ -55,6 +67,8 @@ Deno.serve(async (req) => {
       refresh_token: tokenData.refresh_token,
       expires_at: expiresAt,
     }).eq('id', cred.id)
+
+    await supabase.from('bling_oauth_states').update({ consumed_at: new Date().toISOString() }).eq('state', state)
 
     return new Response(html('Sua conta Bling foi conectada com sucesso. Já pode emitir notas fiscais automaticamente.', true), { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
   } catch (e: any) {
