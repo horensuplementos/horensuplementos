@@ -6,7 +6,7 @@ import banner1 from "@/assets/banner-1.jpg";
 import banner2 from "@/assets/banner-2.jpg";
 import banner3 from "@/assets/banner-3.jpg";
 import { useSiteSection } from "@/contexts/SiteContentContext";
-import { getSectionItems } from "@/lib/siteContent";
+import { getSafeContentHref, getSectionItems } from "@/lib/siteContent";
 
 type Slide = {
   title: string;
@@ -45,7 +45,7 @@ const fallbackSlides: Slide[] = [
 ];
 
 const HeroBanner = () => {
-  const { section } = useSiteSection("hero_banner");
+  const { section, loading } = useSiteSection("hero_banner");
   const rawItems = getSectionItems<any>(section, fallbackSlides as any);
   const slides: Slide[] = rawItems.map((item: any, idx: number) => ({
     title: item.title || fallbackSlides[idx % fallbackSlides.length].title,
@@ -57,6 +57,10 @@ const HeroBanner = () => {
   }));
   const [current, setCurrent] = useState(0);
 
+  useEffect(() => {
+    if (current >= slides.length) setCurrent(0);
+  }, [current, slides.length]);
+
   const next = useCallback(() => {
     setCurrent((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
@@ -66,9 +70,33 @@ const HeroBanner = () => {
   }, [slides.length]);
 
   useEffect(() => {
+    if (slides.length === 0) return;
     const timer = setInterval(next, 5000);
     return () => clearInterval(timer);
-  }, [next]);
+  }, [next, slides.length]);
+
+  // On a first visit, wait for the managed content instead of displaying a
+  // different hard-coded campaign and replacing it a moment later.
+  if (loading && !section) {
+    return (
+      <section
+        id="inicio"
+        aria-busy="true"
+        aria-label="Carregando banner principal"
+        className="relative h-[70vh] w-full overflow-hidden bg-background"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-secondary via-background to-secondary/40" />
+        <div className="container relative mx-auto flex h-full items-center px-6 md:px-20">
+          <div className="w-full max-w-2xl animate-pulse space-y-5">
+            <div className="h-4 w-32 rounded bg-muted" />
+            <div className="h-14 w-4/5 rounded bg-muted md:h-20" />
+            <div className="h-5 w-3/5 rounded bg-muted" />
+            <div className="h-14 w-40 rounded-xl bg-muted" />
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="inicio" className="relative w-full h-[70vh] md:h-[80vh] overflow-hidden">
@@ -126,7 +154,7 @@ const HeroBanner = () => {
                   size="lg"
                   className="rounded-xl px-10 h-14 font-heading text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 transition-transform"
                 >
-                  <a href={slides[current].link}>{slides[current].cta}</a>
+                  <a href={getSafeContentHref(slides[current].link, "#produtos")}>{slides[current].cta}</a>
                 </Button>
               </motion.div>
             </div>
@@ -137,12 +165,14 @@ const HeroBanner = () => {
       {/* Navigation arrows - positioned at far edges */}
       <button
         onClick={prev}
+        aria-label="Slide anterior"
         className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-card/20 backdrop-blur-sm hover:bg-card/40 transition-colors"
       >
         <ChevronLeft className="w-4 h-4 text-foreground" />
       </button>
       <button
         onClick={next}
+        aria-label="Próximo slide"
         className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-card/20 backdrop-blur-sm hover:bg-card/40 transition-colors"
       >
         <ChevronRight className="w-4 h-4 text-foreground" />
@@ -154,6 +184,8 @@ const HeroBanner = () => {
           <button
             key={i}
             onClick={() => setCurrent(i)}
+            aria-label={`Ir para o slide ${i + 1}`}
+            aria-current={i === current ? "true" : undefined}
             className={`h-2 rounded-full transition-all duration-300 ${
               i === current ? "w-8 bg-primary" : "w-2 bg-foreground/30"
             }`}

@@ -25,7 +25,7 @@ const fallbackValues = [
 ];
 
 const AboutSection = () => {
-  const { section } = useSiteSection("about_section");
+  const { section, loading } = useSiteSection("about_section");
   const text = getSectionText(section, {
     subtitle: "Sobre a Horen",
     title: "Excelência em cada detalhe",
@@ -33,6 +33,23 @@ const AboutSection = () => {
       "A Horen é uma marca de creatina de alta qualidade, com matéria prima selecionada e formulações eficientes testadas para ganho de resultados. Produtos para todas as pessoas que buscam uma melhora no estilo de vida.",
   });
   const values = getSectionItems<{ title: string; description: string }>(section, fallbackValues);
+
+  if (loading && !section) {
+    return (
+      <section id="sobre" aria-busy="true" className="bg-card py-24 md:py-32">
+        <div className="container mx-auto animate-pulse px-6">
+          <div className="mx-auto mb-16 flex max-w-2xl flex-col items-center gap-4">
+            <div className="h-4 w-32 rounded bg-muted" />
+            <div className="h-12 w-3/4 rounded bg-muted" />
+            <div className="h-5 w-full rounded bg-muted" />
+          </div>
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-52 rounded-2xl bg-muted" />)}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="sobre" className="py-24 md:py-32 bg-card">

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSiteSection } from "@/contexts/SiteContentContext";
-import { getSectionItems } from "@/lib/siteContent";
+import { getSafeContentHref, getSectionItems } from "@/lib/siteContent";
 
 const fallbackPromos = [
   { text: "🔥 LANÇAMENTO — Whey Isolado Horen com 30% OFF", link: "#produtos" },
@@ -12,7 +12,7 @@ const fallbackPromos = [
 ];
 
 const PromoBanner = () => {
-  const { section } = useSiteSection("promo_banner");
+  const { section, loading } = useSiteSection("promo_banner");
   const promos = getSectionItems<{ text: string; link: string }>(section, fallbackPromos).map((p: any) => ({
     text: p.text || p.title || "",
     link: p.link || p.cta_link || "#produtos",
@@ -27,6 +27,10 @@ const PromoBanner = () => {
     return () => clearInterval(timer);
   }, [promos.length]);
 
+  if (loading && !section) {
+    return <div aria-busy="true" className="h-10 bg-primary/70" />;
+  }
+
   if (promos.length === 0) return null;
 
   return (
@@ -34,6 +38,7 @@ const PromoBanner = () => {
       <div className="container mx-auto px-6 h-10 flex items-center justify-center">
         <button
           onClick={() => setCurrent((prev) => (prev - 1 + promos.length) % promos.length)}
+          aria-label="Promoção anterior"
           className="absolute left-4 p-1 hover:opacity-70 transition-opacity"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
@@ -42,7 +47,7 @@ const PromoBanner = () => {
         <AnimatePresence mode="wait">
           <motion.a
             key={current}
-            href={promos[current].link}
+            href={getSafeContentHref(promos[current].link, "#produtos")}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -55,6 +60,7 @@ const PromoBanner = () => {
 
         <button
           onClick={() => setCurrent((prev) => (prev + 1) % promos.length)}
+          aria-label="Próxima promoção"
           className="absolute right-4 p-1 hover:opacity-70 transition-opacity"
         >
           <ChevronRight className="w-3.5 h-3.5" />

@@ -234,3 +234,23 @@ Em 21 de setembro de 2026 foram implementadas as seguintes mitigações. Elas ex
 - O Markdown do blog passou a ser renderizado como texto/elementos React, sem `dangerouslySetInnerHTML`.
 - Credenciais e tokens do Bling deixaram de ser lidos pelo navegador. A nova `manage-bling` é autenticada e administrativa; o OAuth usa estado persistido, expirável e de uso único.
 - O carrinho agora persiste localmente, respeita o estoque conhecido e sincroniza sessões de carrinho. A sessão anterior é preservada como convertida após uma compra, permitindo métricas consistentes.
+
+## 13. Auditoria complementar — 25 de setembro de 2026
+
+### Mitigações aplicadas
+
+- `check-order-status` exige uma sessão válida e restringe a consulta ao dono do pedido. Status pagos não podem mais ser consultados por terceiros que conheçam um UUID.
+- `calculate-shipping` valida a sessão antes de utilizar o token do Melhor Envio, reduzindo abuso do serviço de cotação.
+- `order-automation` e `tracking-update` aceitam somente chamadas internas autenticadas com a service role. Seus agendamentos/chamadores devem enviar `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`.
+- O CMS não permite mais que links publicados usem protocolos executáveis, como `javascript:`; apenas âncoras, caminhos relativos, HTTP(S), `mailto:` e `tel:` são aceitos.
+- O conteúdo administrável passou a usar cache local seguro para o último conteúdo publicado e skeletons na primeira carga. Isso elimina a troca visual de banners/textos de fallback pelo conteúdo do Supabase e evita estado de carregamento infinito quando a consulta falha.
+- A calculadora passou a aplicar os valores padrão configurados no CMS assim que a configuração é carregada.
+
+### Evidência visual
+
+- Capturas locais da auditoria: `/tmp/horen-audit/03-home-loading-fixed.png` (skeleton neutro) e `/tmp/horen-audit/04-home-loaded-fixed.png` (banner publicado). Não há mais a campanha de fallback intermediária.
+
+### Dependências
+
+- `npm audit fix --package-lock-only` foi aplicado sem `--force`. O relatório de produção ficou em **2 vulnerabilidades moderadas**, ambas em `react-router-dom`/`react-router` e corrigidas apenas pela migração quebrável para React Router 7.
+- O relatório completo inclui mais 4 vulnerabilidades de desenvolvimento relacionadas a Vite/Vitest; a correção disponível exige Vite 8 e Vitest 5. Essas migrações devem ser feitas em branch própria, com regressão de rotas e build, e não foram forçadas neste projeto.

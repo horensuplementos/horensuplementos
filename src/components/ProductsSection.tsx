@@ -16,7 +16,7 @@ const ProductsSection = () => {
   const [loading, setLoading] = useState(true);
   const { addItem } = useCart();
   const navigate = useNavigate();
-  const { section } = useSiteSection("products_section");
+  const { section, loading: contentLoading } = useSiteSection("products_section");
   const text = getSectionText(section, {
     subtitle: "Nossos Produtos",
     title: "Linha Premium",
@@ -51,7 +51,12 @@ const ProductsSection = () => {
   return (
     <section id="produtos" className="py-24 md:py-32 bg-background">
       <div className="container mx-auto px-6">
-        <motion.div
+        {contentLoading && !section ? (
+          <div aria-busy="true" className="mx-auto mb-16 flex max-w-md animate-pulse flex-col items-center gap-4">
+            <div className="h-4 w-32 rounded bg-muted" />
+            <div className="h-12 w-64 rounded bg-muted" />
+          </div>
+        ) : <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -63,7 +68,7 @@ const ProductsSection = () => {
           <h2 className="font-heading text-4xl md:text-5xl font-bold text-foreground">
             {text.title}
           </h2>
-        </motion.div>
+        </motion.div>}
 
         {loading ? (
           <div className="flex justify-center py-20">

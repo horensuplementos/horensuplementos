@@ -15,3 +15,11 @@ project_id = "ycmhgmxstrjoiysbbpxh"
     verify_jwt = true
   [functions.manage-bling]
     verify_jwt = true
+  [functions.calculate-shipping]
+    verify_jwt = true
+  [functions.check-order-status]
+    verify_jwt = true
+  [functions.order-automation]
+    verify_jwt = true
+  [functions.tracking-update]
+    verify_jwt = true
