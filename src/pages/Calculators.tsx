@@ -9,14 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useSiteSection } from "@/contexts/SiteContentContext";
-import { getSectionItems, getSectionText } from "@/lib/siteContent";
+import { getSafeInternalPath, getSectionItems, getSectionText } from "@/lib/siteContent";
 
 type CalculatorMode = "creatina" | "tmb";
 
 const Calculators = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { section } = useSiteSection("calculators_section");
+  const { section, loading } = useSiteSection("calculators_section");
   const text = getSectionText(section, {
     title: "Calculadoras",
     subtitle: "Ferramentas Horen",
@@ -62,6 +62,12 @@ const Calculators = () => {
   const [age, setAge] = useState<string>("25");
   const [activity, setActivity] = useState<string>("1.55");
 
+  useEffect(() => {
+    if (!section) return;
+    setGrams(creatinaCfg.default_grams || "5");
+    setStock(creatinaCfg.default_stock || "300");
+  }, [section, creatinaCfg.default_grams, creatinaCfg.default_stock]);
+
   const tmbResult = useMemo(() => {
     const w = parseFloat(weight);
     const h = parseFloat(height);
@@ -81,6 +87,13 @@ const Calculators = () => {
       <CartDrawer />
       <div className="pt-28 pb-20">
         <div className="container mx-auto px-6 max-w-5xl">
+          {loading && !section ? (
+            <div aria-busy="true" className="animate-pulse space-y-8">
+              <div className="h-5 w-40 rounded bg-muted" />
+              <div className="space-y-4"><div className="h-8 w-40 rounded bg-muted" /><div className="h-14 w-96 max-w-full rounded bg-muted" /><div className="h-5 w-full max-w-2xl rounded bg-muted" /></div>
+              <div className="h-96 rounded-2xl bg-muted" />
+            </div>
+          ) : <>
           <button
             onClick={() => navigate("/")}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8"
@@ -256,10 +269,11 @@ const Calculators = () => {
           )}
 
           <div className="mt-12 text-center">
-            <Button onClick={() => navigate(text.cta_link || "/#produtos")} size={ctaSize}>
+            <Button onClick={() => navigate(getSafeInternalPath(text.cta_link))} size={ctaSize}>
               {text.cta_label || "Ver produtos Horen"}
             </Button>
           </div>
+          </>}
         </div>
       </div>
       <Footer />
@@ -268,4 +282,3 @@ const Calculators = () => {
 };
 
 export default Calculators;
-

@@ -13,3 +13,22 @@ export const getSectionItems = <T,>(section: { items?: T[] | null } | null, fall
   const items = Array.isArray(section?.items) ? section?.items : [];
   return items && items.length > 0 ? items : fallback;
 };
+
+/** Limits links edited in the CMS to protocols that are safe for storefront visitors. */
+export const getSafeContentHref = (value: string | null | undefined, fallback = "#") => {
+  const href = value?.trim();
+  if (!href) return fallback;
+  if (href.startsWith("#") || href.startsWith("/")) return href;
+
+  try {
+    const url = new URL(href);
+    return ["https:", "http:", "mailto:", "tel:"].includes(url.protocol) ? href : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+export const getSafeInternalPath = (value: string | null | undefined, fallback = "/#produtos") => {
+  const href = getSafeContentHref(value, fallback);
+  return href.startsWith("/") || href.startsWith("#") ? href : fallback;
+};

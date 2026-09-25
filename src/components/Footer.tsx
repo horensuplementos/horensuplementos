@@ -1,12 +1,12 @@
 import { Instagram, Mail, Phone } from "lucide-react";
 import logo from "@/assets/horen-logo-transparent.png";
 import { useSiteSection } from "@/contexts/SiteContentContext";
-import { getSectionText, getSectionItems } from "@/lib/siteContent";
+import { getSafeContentHref, getSectionText, getSectionItems } from "@/lib/siteContent";
 
 type FooterItem = { type?: string; label?: string; href?: string };
 
 const Footer = () => {
-  const { section } = useSiteSection("footer");
+  const { section, loading } = useSiteSection("footer");
   const text = getSectionText(section, {
     description:
       "Suplementos premium para quem leva saúde e performance a sério. Qualidade, confiança e resultados reais.",
@@ -23,6 +23,18 @@ const Footer = () => {
     if (type === "instagram") return Instagram;
     return Mail;
   };
+
+  if (loading && !section) {
+    return (
+      <footer id="contato" aria-busy="true" className="border-t border-border bg-background">
+        <div className="container mx-auto grid animate-pulse grid-cols-1 gap-12 px-6 py-16 md:grid-cols-3">
+          <div className="space-y-4"><div className="h-7 w-28 rounded bg-muted" /><div className="h-20 max-w-xs rounded bg-muted" /></div>
+          <div className="space-y-3"><div className="h-5 w-16 rounded bg-muted" /><div className="h-24 w-32 rounded bg-muted" /></div>
+          <div className="space-y-3"><div className="h-5 w-20 rounded bg-muted" /><div className="h-24 w-48 rounded bg-muted" /></div>
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer id="contato" className="bg-background border-t border-border">
@@ -59,7 +71,7 @@ const Footer = () => {
                 return (
                   <a
                     key={`${item.label}-${idx}`}
-                    href={item.href || "#"}
+                    href={getSafeContentHref(item.href)}
                     target={external ? "_blank" : undefined}
                     rel={external ? "noopener noreferrer" : undefined}
                     className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors font-body"

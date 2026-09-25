@@ -388,6 +388,11 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const melhorEnvioToken = Deno.env.get('MELHOR_ENVIO_TOKEN')
+
+    if (req.headers.get('Authorization') !== `Bearer ${supabaseKey}`) {
+      return json({ error: 'Unauthorized' }, 401)
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     const body = await req.json()

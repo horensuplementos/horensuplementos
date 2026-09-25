@@ -3,6 +3,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
 const BodySchema = z.object({
   to_zip: z.string().min(8).max(9),
@@ -41,6 +42,22 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Não autenticado' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!)
+    const { data: { user }, error: userError } = await anonClient.auth.getUser(authHeader.slice('Bearer '.length))
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Token inválido' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     const token = Deno.env.get('MELHOR_ENVIO_TOKEN')
     if (!token) {
       return new Response(JSON.stringify({ error: 'Token não configurado' }), {
