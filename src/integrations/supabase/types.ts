@@ -657,6 +657,10 @@ export type Database = {
           ingredients: string | null
           name: string
           price: number
+          shipping_height_cm: number
+          shipping_length_cm: number
+          shipping_weight_kg: number
+          shipping_width_cm: number
           stock: number
           updated_at: string
           weight: string | null
@@ -684,6 +688,10 @@ export type Database = {
           ingredients?: string | null
           name: string
           price: number
+          shipping_height_cm?: number
+          shipping_length_cm?: number
+          shipping_weight_kg?: number
+          shipping_width_cm?: number
           stock?: number
           updated_at?: string
           weight?: string | null
@@ -711,6 +719,10 @@ export type Database = {
           ingredients?: string | null
           name?: string
           price?: number
+          shipping_height_cm?: number
+          shipping_length_cm?: number
+          shipping_weight_kg?: number
+          shipping_width_cm?: number
           stock?: number
           updated_at?: string
           weight?: string | null
