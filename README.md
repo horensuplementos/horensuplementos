@@ -35,3 +35,9 @@ supabase functions deploy bling-oauth-callback
 ```
 
 Configure no ambiente Supabase os segredos já usados pelas integrações: `MERCADO_PAGO_TOKEN`, `MELHOR_ENVIO_TOKEN`, `HOREN_FROM_ZIP`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` e os segredos de e-mail/IA quando esses recursos estiverem ativos.
+
+## Lovable
+
+- Projeto: [editor Lovable](https://lovable.dev/projects/c03127fc-aea6-454e-a4bd-f36279a6db2d)
+- Ambiente publicado: https://horensuplementos.lovable.app
+- A sincronização é feita pela branch `main`; alterações do Lovable que forem enviadas para `lovable-sync` devem ser integradas por merge commit, sem squash ou rebase.
