@@ -29,6 +29,15 @@ export const getSafeContentHref = (value: string | null | undefined, fallback = 
 };
 
 export const getSafeInternalPath = (value: string | null | undefined, fallback = "/#produtos") => {
-  const href = getSafeContentHref(value, fallback);
-  return href.startsWith("/") || href.startsWith("#") ? href : fallback;
+  if (!value || /[\\\u0000-\u001f\u007f]/.test(value)) return fallback;
+  const href = value.trim();
+  if (!href) return fallback;
+  if (href.startsWith("#")) return href;
+  if (!href.startsWith("/") || href.startsWith("//")) return fallback;
+  try {
+    const base = "https://horen.internal";
+    return new URL(href, base).origin === base ? href : fallback;
+  } catch {
+    return fallback;
+  }
 };
