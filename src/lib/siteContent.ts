@@ -35,6 +35,8 @@ export const getSafeInternalPath = (value: string | null | undefined, fallback =
   if (href.startsWith("#")) return href;
   if (!href.startsWith("/") || href.startsWith("//")) return fallback;
   try {
+    const decodedPath = decodeURIComponent(href.split(/[?#]/, 1)[0]);
+    if (decodedPath.startsWith("//") || decodedPath.includes("\\")) return fallback;
     const base = "https://horen.internal";
     return new URL(href, base).origin === base ? href : fallback;
   } catch {
