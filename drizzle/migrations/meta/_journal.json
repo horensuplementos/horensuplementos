@@ -8,6 +8,13 @@
       "when": 1790343525294,
       "tag": "0000_restrict_public_site_settings_read",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790777553371,
+      "tag": "0001_product_image_gallery",
+      "breakpoints": true
     }
   ]
 }
