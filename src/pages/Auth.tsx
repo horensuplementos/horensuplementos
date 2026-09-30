@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/horen-logo.png";
+import { getSafeInternalPath } from "@/lib/siteContent";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,10 +18,10 @@ const Auth = () => {
   const location = useLocation();
   const { toast } = useToast();
   const queryRedirect = new URLSearchParams(location.search).get("redirectTo");
-  const redirectTo =
-    queryRedirect ||
-    (location.state as { redirectTo?: string } | null)?.redirectTo ||
-    "/";
+  const redirectTo = getSafeInternalPath(
+    queryRedirect || (location.state as { redirectTo?: string } | null)?.redirectTo,
+    "/",
+  );
 
   useEffect(() => {
     const tryAcceptPendingInvite = async (userId: string, userEmail: string | null | undefined) => {
