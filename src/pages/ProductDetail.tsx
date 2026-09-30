@@ -18,6 +18,7 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
+  const [selectedImage, setSelectedImage] = useState(0);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -28,6 +29,7 @@ const ProductDetail = () => {
         .eq("id", id)
         .single();
       setProduct(data);
+      setSelectedImage(0);
       setLoading(false);
     };
     fetchProduct();
@@ -67,6 +69,11 @@ const ProductDetail = () => {
     );
   }
 
+  const images = product.image_urls?.length
+    ? product.image_urls
+    : product.image_url ? [product.image_url] : [];
+  const activeImage = images[selectedImage] || images[0];
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -82,12 +89,30 @@ const ProductDetail = () => {
           </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div className="aspect-square bg-secondary rounded-2xl overflow-hidden">
-              {product.image_url ? (
-                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+            <div>
+              <div className="aspect-square bg-secondary rounded-2xl overflow-hidden">
+              {activeImage ? (
+                <img src={activeImage} alt={`${product.name} — imagem ${selectedImage + 1}`} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <ShoppingBag className="w-24 h-24 text-muted-foreground/20" />
+                </div>
+              )}
+              </div>
+              {images.length > 1 && (
+                <div className="mt-3 grid grid-cols-5 gap-2">
+                  {images.map((image, index) => (
+                    <button
+                      key={image}
+                      type="button"
+                      onClick={() => setSelectedImage(index)}
+                      aria-label={`Ver imagem ${index + 1} de ${product.name}`}
+                      aria-current={index === selectedImage ? "true" : undefined}
+                      className={`aspect-square overflow-hidden rounded-lg border transition-colors ${index === selectedImage ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"}`}
+                    >
+                      <img src={image} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

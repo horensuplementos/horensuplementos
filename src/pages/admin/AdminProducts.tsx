@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Upload, X, Package, Sparkles, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, ImagePlus, Package, Pencil, Plus, RefreshCw, Sparkles, Trash2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -17,7 +17,7 @@ interface ProductForm {
   category: string;
   weight: string;
   active: boolean;
-  image_url: string;
+  image_urls: string[];
   brand: string;
   flavor: string;
   benefits_input: string;
@@ -45,7 +45,7 @@ const emptyForm: ProductForm = {
   category: "",
   weight: "",
   active: true,
-  image_url: "",
+  image_urls: [],
   brand: "",
   flavor: "",
   benefits_input: "",
@@ -71,6 +71,8 @@ const AdminProducts = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [uploading, setUploading] = useState(false);
+  const [removedImageUrls, setRemovedImageUrls] = useState<string[]>([]);
+  const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const { toast } = useToast();
@@ -85,27 +87,86 @@ const AdminProducts = () => {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const MAX_PRODUCT_IMAGES = 8;
+  const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+  const acceptedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
-    setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${crypto.randomUUID()}.${ext}`;
+  const moveImage = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= form.image_urls.length) return;
+    setForm((prev) => {
+      const image_urls = [...prev.image_urls];
+      const [image] = image_urls.splice(fromIndex, 1);
+      image_urls.splice(toIndex, 0, image);
+      return { ...prev, image_urls };
+    });
+  };
 
-    const { error } = await supabase.storage
-      .from("product-images")
-      .upload(path, file, { upsert: true });
-
-    if (error) {
-      toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
-      setUploading(false);
+  const uploadImages = async (files: File[]) => {
+    const availableSlots = MAX_PRODUCT_IMAGES - form.image_urls.length;
+    if (availableSlots <= 0) {
+      toast({ title: `Limite de ${MAX_PRODUCT_IMAGES} imagens atingido.`, variant: "destructive" });
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-    setForm((prev) => ({ ...prev, image_url: urlData.publicUrl }));
-    setUploading(false);
+    const selectedFiles = files.slice(0, availableSlots);
+    const invalidFile = selectedFiles.find((file) => !acceptedImageTypes.has(file.type) || file.size > MAX_IMAGE_SIZE_BYTES);
+    if (invalidFile) {
+      toast({
+        title: "Imagem inválida",
+        description: "Envie JPG, PNG, WebP ou AVIF de até 5 MB por arquivo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (files.length > selectedFiles.length) {
+      toast({ title: `Somente ${availableSlots} imagem(ns) foram adicionadas devido ao limite de ${MAX_PRODUCT_IMAGES}.` });
+    }
+
+    setUploading(true);
+    try {
+      const results = await Promise.all(selectedFiles.map(async (file) => {
+        const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const path = `products/${crypto.randomUUID()}.${extension}`;
+        const { error } = await supabase.storage.from("product-images").upload(path, file, {
+          upsert: false,
+          contentType: file.type,
+        });
+        if (error) throw error;
+        const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+        return data.publicUrl;
+      }));
+      setForm((prev) => ({ ...prev, image_urls: [...prev.image_urls, ...results] }));
+    } catch (error: any) {
+      toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleImageInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (files.length) void uploadImages(files);
+  };
+
+  const removeImage = (url: string) => {
+    setForm((prev) => ({ ...prev, image_urls: prev.image_urls.filter((image) => image !== url) }));
+    setRemovedImageUrls((prev) => prev.includes(url) ? prev : [...prev, url]);
+  };
+
+  const removeImagesFromStorage = async (urls: string[]) => {
+    const paths = urls.flatMap((url) => {
+      const marker = "/product-images/";
+      const index = url.indexOf(marker);
+      return index === -1 ? [] : [decodeURIComponent(url.slice(index + marker.length).split("?")[0])];
+    });
+    if (!paths.length) return;
+
+    const { error } = await supabase.storage.from("product-images").remove(paths);
+    if (error) {
+      toast({ title: "Produto salvo, mas uma imagem não pôde ser removida", description: error.message, variant: "destructive" });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,7 +196,7 @@ const AdminProducts = () => {
       category: form.category || null,
       weight: form.weight || null,
       active: form.active,
-      image_url: form.image_url || null,
+      image_urls: form.image_urls,
       brand: form.brand || null,
       flavor: form.flavor || null,
       benefits_input: form.benefits_input || null,
@@ -155,12 +216,14 @@ const AdminProducts = () => {
       shipping_weight_kg: logistics[3],
     } as any;
 
+    let saved = false;
     if (editingId) {
       const { error } = await supabase.from("products").update(payload).eq("id", editingId);
       if (error) {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Produto atualizado!" });
+        saved = true;
       }
     } else {
       const { error } = await supabase.from("products").insert(payload);
@@ -168,14 +231,19 @@ const AdminProducts = () => {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Produto criado!" });
+        saved = true;
       }
     }
 
     setLoading(false);
-    setShowForm(false);
-    setEditingId(null);
-    setForm(emptyForm);
-    fetchProducts();
+    if (saved) {
+      await removeImagesFromStorage(removedImageUrls);
+      setShowForm(false);
+      setEditingId(null);
+      setForm(emptyForm);
+      setRemovedImageUrls([]);
+      fetchProducts();
+    }
   };
 
   const handleEdit = (product: Product) => {
@@ -188,7 +256,9 @@ const AdminProducts = () => {
       category: product.category || "",
       weight: product.weight || "",
       active: product.active,
-      image_url: product.image_url || "",
+      image_urls: Array.isArray(p.image_urls) && p.image_urls.length > 0
+        ? p.image_urls
+        : product.image_url ? [product.image_url] : [],
       brand: p.brand || "",
       flavor: p.flavor || "",
       benefits_input: p.benefits_input || "",
@@ -208,6 +278,7 @@ const AdminProducts = () => {
       shipping_weight_kg: String(p.shipping_weight_kg ?? 0.5),
     });
     setEditingId(product.id);
+    setRemovedImageUrls([]);
     setShowForm(true);
   };
 
@@ -287,6 +358,7 @@ const AdminProducts = () => {
           onClick={() => {
             setForm(emptyForm);
             setEditingId(null);
+            setRemovedImageUrls([]);
             setShowForm(true);
           }}
           className="gap-2"
@@ -302,7 +374,11 @@ const AdminProducts = () => {
             <CardTitle className="font-heading text-lg">
               {editingId ? "Editar Produto" : "Novo Produto"}
             </CardTitle>
-            <button onClick={() => { setShowForm(false); setEditingId(null); }}>
+            <button
+              type="button"
+              aria-label="Fechar formulário"
+              onClick={() => { setShowForm(false); setEditingId(null); setRemovedImageUrls([]); }}
+            >
               <X className="w-5 h-5 text-muted-foreground" />
             </button>
           </CardHeader>
@@ -390,26 +466,76 @@ const AdminProducts = () => {
                   </div>
                 ))}
               </div>
-              <div>
-                <label className="text-sm font-body text-muted-foreground mb-1 block">Imagem</label>
-                <div className="flex gap-2">
-                  <label className="flex items-center gap-2 px-4 py-3 bg-secondary border border-border rounded-xl cursor-pointer hover:bg-muted transition-colors text-sm font-body text-muted-foreground">
-                    <Upload className="w-4 h-4" />
-                    {uploading ? "Enviando..." : "Upload"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                      disabled={uploading}
-                    />
-                  </label>
-                  {form.image_url && (
-                    <img
-                      src={form.image_url}
-                      alt="Preview"
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
+              <div className="md:col-span-2">
+                <label className="text-sm font-body text-muted-foreground mb-1 block">Imagens do produto</label>
+                <div
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const files = Array.from(event.dataTransfer.files || []);
+                    if (files.length) void uploadImages(files);
+                  }}
+                  className="rounded-xl border border-dashed border-border bg-secondary/30 p-4 transition-colors hover:border-primary/50"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-heading text-sm font-semibold text-foreground">Galeria de imagens</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Arraste até {MAX_PRODUCT_IMAGES} imagens aqui ou selecione os arquivos. A primeira é a imagem principal.</p>
+                    </div>
+                    <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-4 py-3 text-sm font-body text-muted-foreground transition-colors hover:bg-muted">
+                      {uploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                      {uploading ? "Enviando..." : "Selecionar imagens"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        multiple
+                        className="hidden"
+                        onChange={handleImageInput}
+                        disabled={uploading}
+                      />
+                    </label>
+                  </div>
+
+                  {form.image_urls.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                      {form.image_urls.map((url, index) => (
+                        <div
+                          key={url}
+                          draggable={!uploading}
+                          onDragStart={(event) => {
+                            setDraggedImageIndex(index);
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/product-image-index", String(index));
+                          }}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            const files = Array.from(event.dataTransfer.files || []);
+                            if (files.length) {
+                              void uploadImages(files);
+                              return;
+                            }
+                            const sourceIndex = event.dataTransfer.getData("text/product-image-index");
+                            if (sourceIndex !== "") moveImage(Number(sourceIndex), index);
+                            setDraggedImageIndex(null);
+                          }}
+                          onDragEnd={() => setDraggedImageIndex(null)}
+                          className={`group relative aspect-square overflow-hidden rounded-xl border bg-card ${draggedImageIndex === index ? "border-primary opacity-60" : "border-border"}`}
+                        >
+                          <img src={url} alt={`Imagem ${index + 1} de ${form.name || "produto"}`} className="h-full w-full object-cover" />
+                          {index === 0 && <span className="absolute left-2 top-2 rounded-md bg-primary px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">Principal</span>}
+                          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-background/85 px-2 py-1.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                            <GripVertical className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                            <div className="flex gap-1">
+                              <button type="button" aria-label={`Mover imagem ${index + 1} para esquerda`} onClick={() => moveImage(index, index - 1)} disabled={index === 0} className="rounded p-1 text-foreground hover:bg-muted disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+                              <button type="button" aria-label={`Mover imagem ${index + 1} para direita`} onClick={() => moveImage(index, index + 1)} disabled={index === form.image_urls.length - 1} className="rounded p-1 text-foreground hover:bg-muted disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+                              <button type="button" aria-label={`Excluir imagem ${index + 1}`} onClick={() => removeImage(url)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
