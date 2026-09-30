@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart, type CartProduct } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShoppingBag, Minus, Plus } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ShoppingBag, Minus, Plus } from "lucide-react";
 import Header from "@/components/Header";
 import CartDrawer from "@/components/CartDrawer";
 import Footer from "@/components/Footer";
@@ -73,6 +73,8 @@ const ProductDetail = () => {
     ? product.image_urls
     : product.image_url ? [product.image_url] : [];
   const activeImage = images[selectedImage] || images[0];
+  const showPreviousImage = () => setSelectedImage((index) => (index - 1 + images.length) % images.length);
+  const showNextImage = () => setSelectedImage((index) => (index + 1) % images.length);
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,14 +92,46 @@ const ProductDetail = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div>
-              <div className="aspect-square bg-secondary rounded-2xl overflow-hidden">
-              {activeImage ? (
-                <img src={activeImage} alt={`${product.name} — imagem ${selectedImage + 1}`} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <ShoppingBag className="w-24 h-24 text-muted-foreground/20" />
-                </div>
-              )}
+              <div className="relative aspect-square overflow-hidden rounded-2xl bg-secondary">
+                {activeImage ? (
+                  <img src={activeImage} alt={`${product.name} — imagem ${selectedImage + 1}`} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <ShoppingBag className="h-24 w-24 text-muted-foreground/20" />
+                  </div>
+                )}
+                {images.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={showPreviousImage}
+                      aria-label={`Imagem anterior de ${product.name}`}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-background/85 p-2 text-foreground shadow-sm transition-colors hover:bg-background"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={showNextImage}
+                      aria-label={`Próxima imagem de ${product.name}`}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-background/85 p-2 text-foreground shadow-sm transition-colors hover:bg-background"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
+                      {images.map((image, index) => (
+                        <button
+                          key={image}
+                          type="button"
+                          onClick={() => setSelectedImage(index)}
+                          aria-label={`Ver imagem ${index + 1} de ${product.name}`}
+                          aria-current={index === selectedImage ? "true" : undefined}
+                          className={`h-2 rounded-full transition-all ${index === selectedImage ? "w-6 bg-primary" : "w-2 bg-background/75 hover:bg-background"}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               {images.length > 1 && (
                 <div className="mt-3 grid grid-cols-5 gap-2">
