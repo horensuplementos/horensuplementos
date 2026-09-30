@@ -61,4 +61,10 @@ Os três contadores de inconsistência devem ser zero. Se algum campo estiver au
 
 Em caso de falha, interromper a publicação e corrigir com uma nova migration. Restaurar backup do banco é último recurso: a restauração perde alterações posteriores e não restaura arquivos do Storage.
 
+## Pendências de compatibilidade e validação
+
+O `npm audit` ainda sinaliza dois avisos moderados de `react-router`/`react-router-dom` 6. O redirecionamento variável após login agora aceita somente caminhos internos; a outra ocorrência é ligada à hidratação SSR, que este app Vite com `BrowserRouter` não usa. A correção indicada pelo audit exige React Router 7 (mudança de versão principal); migrar o roteamento deve ser uma tarefa separada, com teste de todas as rotas no Lovable. O audit completo também aponta dependências de desenvolvimento, incluindo aviso alto do servidor Vite em caminhos alternativos do Windows; o bundle publicado não executa o servidor de desenvolvimento. Não atualizar automaticamente Vite/Vitest/Drizzle para versões principais sem testar o preview do Lovable.
+
+Os testes automatizados locais cobrem a página individual, carrinho e validação de rotas internas. Um teste real com banco, Storage, conta autenticada, frete e pagamento depende do ambiente Cloud e deve ser executado no preview pelo responsável antes da publicação.
+
 Referências: [Banco de dados do Lovable](https://docs.lovable.dev/features/database), [Lovable Cloud](https://docs.lovable.dev/features/cloud), [Edge Functions](https://docs.lovable.dev/features/edge-functions), [sincronização com GitHub](https://docs.lovable.dev/integrations/github).

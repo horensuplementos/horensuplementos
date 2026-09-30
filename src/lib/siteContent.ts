@@ -29,7 +29,7 @@ export const getSafeContentHref = (value: string | null | undefined, fallback = 
 };
 
 export const getSafeInternalPath = (value: string | null | undefined, fallback = "/#produtos") => {
-  if (!value || /[\\\u0000-\u001f\u007f]/.test(value)) return fallback;
+  if (!value || [...value].some((character) => character === "\\" || character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) return fallback;
   const href = value.trim();
   if (!href) return fallback;
   if (href.startsWith("#")) return href;
