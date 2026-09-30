@@ -19,8 +19,15 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1790778400000,
-      "tag": "0002_align_product_catalog_schema",
+      "when": 1790778079196,
+      "tag": "0002_product_image_gallery",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790778500000,
+      "tag": "0003_align_product_catalog_schema",
       "breakpoints": true
     }
   ]
