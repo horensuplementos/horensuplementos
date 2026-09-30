@@ -43,6 +43,13 @@
       "when": 1790780000000,
       "tag": "0005_fix_product_image_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790784062728,
+      "tag": "0006_fix_product_image_sync",
+      "breakpoints": true
     }
   ]
 }
