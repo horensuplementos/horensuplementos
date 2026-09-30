@@ -30,7 +30,7 @@ const ProductImageCarousel = ({ product, onOpen }: { product: Product; onOpen: (
   };
 
   return (
-    <div className="relative aspect-square cursor-pointer overflow-hidden bg-secondary" onClick={onOpen}>
+    <div className="relative aspect-square overflow-hidden bg-secondary">
       {images.length ? (
         <img
           src={images[current]}
@@ -44,13 +44,15 @@ const ProductImageCarousel = ({ product, onOpen }: { product: Product; onOpen: (
         </div>
       )}
 
+      <button type="button" onClick={onOpen} aria-label={`Ver detalhes de ${product.name}`} className="absolute inset-0 h-full w-full" />
+
       {hasMultipleImages && (
         <>
           <button
             type="button"
             onClick={showPrevious}
             aria-label={`Imagem anterior de ${product.name}`}
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-1.5 text-foreground opacity-100 shadow-sm transition-opacity hover:bg-background sm:opacity-0 sm:group-hover:opacity-100"
+            className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/80 p-1.5 text-foreground opacity-100 shadow-sm transition-opacity hover:bg-background sm:opacity-0 sm:group-hover:opacity-100"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -58,11 +60,11 @@ const ProductImageCarousel = ({ product, onOpen }: { product: Product; onOpen: (
             type="button"
             onClick={showNext}
             aria-label={`Próxima imagem de ${product.name}`}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-1.5 text-foreground opacity-100 shadow-sm transition-opacity hover:bg-background sm:opacity-0 sm:group-hover:opacity-100"
+            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/80 p-1.5 text-foreground opacity-100 shadow-sm transition-opacity hover:bg-background sm:opacity-0 sm:group-hover:opacity-100"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+          <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
             {images.map((image, index) => (
               <span key={image} className={`h-1.5 rounded-full transition-all ${index === current ? "w-4 bg-primary" : "w-1.5 bg-background/70"}`} />
             ))}
@@ -159,7 +161,7 @@ const ProductsSection = () => {
                     </div>
                   )}
                   {product.stock <= 0 && (
-                    <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+                    <div className="pointer-events-none absolute inset-0 bg-background/60 flex items-center justify-center">
                       <span className="bg-destructive text-destructive-foreground text-sm font-bold px-4 py-2 rounded-lg">
                         Esgotado
                       </span>
@@ -168,11 +170,8 @@ const ProductsSection = () => {
                 </div>
 
                 <div className="p-6">
-                  <h3
-                    className="font-heading text-lg font-semibold text-foreground mb-1 cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => navigate(`/produto/${product.id}`)}
-                  >
-                    {product.name}
+                  <h3 className="font-heading text-lg font-semibold text-foreground mb-1">
+                    <button type="button" onClick={() => navigate(`/produto/${product.id}`)} className="text-left transition-colors hover:text-primary">{product.name}</button>
                   </h3>
                   {product.weight && (
                     <p className="text-sm text-muted-foreground mb-4">{product.weight}</p>

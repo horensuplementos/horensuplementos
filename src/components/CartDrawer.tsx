@@ -86,7 +86,9 @@ const CartDrawer = () => {
                           </span>
                           <button
                             onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                            disabled={item.product.stock != null && item.quantity >= item.product.stock}
+                            aria-label={`Adicionar uma unidade de ${item.product.name}`}
+                            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
