@@ -36,6 +36,13 @@
       "when": 1790778754179,
       "tag": "0004_align_product_catalog_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790780000000,
+      "tag": "0005_fix_product_image_sync",
+      "breakpoints": true
     }
   ]
 }
