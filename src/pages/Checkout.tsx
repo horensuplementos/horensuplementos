@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
@@ -87,6 +87,7 @@ const Checkout = () => {
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
   const [loadingShipping, setLoadingShipping] = useState(false);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -468,6 +469,7 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (items.length === 0) return;
 
     const isPickup = deliveryMode === "pickup";
@@ -498,8 +500,15 @@ const Checkout = () => {
       return;
     }
 
-    const cartStatus = await refreshCart();
+    submittingRef.current = true;
+    let cartStatus: Awaited<ReturnType<typeof refreshCart>>;
+    try {
+      cartStatus = await refreshCart();
+    } catch {
+      cartStatus = "error";
+    }
     if (cartStatus !== "unchanged") {
+      submittingRef.current = false;
       toast({ title: "Revise o carrinho", description: cartStatus === "error" ? "Não foi possível conferir os produtos. Tente novamente." : "Produtos ou preços mudaram. Confira o carrinho e recalcule o frete.", variant: "destructive" });
       return;
     }
@@ -564,6 +573,7 @@ const Checkout = () => {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 

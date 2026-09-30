@@ -81,7 +81,13 @@ const ProductDetail = () => {
     if (!product) return;
     const previousTitle = document.title;
     document.title = `${product.name} | Horen Suplementos`;
-    return () => { document.title = previousTitle; };
+    const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    const previousDescription = description?.content;
+    if (description) description.content = product.ai_meta_description?.trim() || product.ai_description_short?.trim() || product.description?.trim().slice(0, 160) || previousDescription || "";
+    return () => {
+      document.title = previousTitle;
+      if (description && previousDescription !== undefined) description.content = previousDescription;
+    };
   }, [product]);
 
   if (status === "loading") return <div className="min-h-screen bg-background flex items-center justify-center" role="status" aria-label="Carregando produto"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
