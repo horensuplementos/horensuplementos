@@ -72,6 +72,12 @@ const parseDecimal = (value: string) => {
   return Number.isFinite(number) ? number : null;
 };
 
+const normalizeFaq = (value: unknown): ProductForm["ai_faq"] =>
+  Array.isArray(value) ? value.filter((item) => item && typeof item.q === "string" && typeof item.a === "string") : [];
+
+const normalizeBenefits = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
 const AdminProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -109,6 +115,7 @@ const AdminProducts = () => {
   };
 
   const uploadImages = async (files: File[]) => {
+    if (uploading) return;
     const availableSlots = MAX_PRODUCT_IMAGES - form.image_urls.length;
     if (availableSlots <= 0) {
       toast({ title: `Limite de ${MAX_PRODUCT_IMAGES} imagens atingido.`, variant: "destructive" });
@@ -132,7 +139,7 @@ const AdminProducts = () => {
 
     setUploading(true);
     try {
-      const results = await Promise.all(selectedFiles.map(async (file) => {
+      const results = await Promise.allSettled(selectedFiles.map(async (file) => {
         const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
         const path = `products/${crypto.randomUUID()}.${extension}`;
         const { error } = await supabase.storage.from("product-images").upload(path, file, {
@@ -143,7 +150,14 @@ const AdminProducts = () => {
         const { data } = supabase.storage.from("product-images").getPublicUrl(path);
         return data.publicUrl;
       }));
-      setForm((prev) => ({ ...prev, image_urls: [...prev.image_urls, ...results] }));
+      const uploaded = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+      if (uploaded.length) setForm((prev) => ({ ...prev, image_urls: [...prev.image_urls, ...uploaded] }));
+      const failed = results.filter((result) => result.status === "rejected");
+      if (failed.length) toast({
+        title: `${failed.length} imagem(ns) não foram enviadas`,
+        description: `${uploaded.length} imagem(ns) enviada(s) com sucesso. Tente novamente as demais.`,
+        variant: "destructive",
+      });
     } catch (error: any) {
       toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
     } finally {
@@ -178,15 +192,29 @@ const AdminProducts = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploading || loading) return;
+    const name = form.name.replace(/\s+/g, " ").trim();
+    if (!name) {
+      toast({ title: "Nome obrigatório", description: "Informe o nome do produto.", variant: "destructive" });
+      return;
+    }
+    if (form.ai_faq.some((item) => !item.q.trim() || !item.a.trim())) {
+      toast({ title: "Pergunta incompleta", description: "Preencha pergunta e resposta ou remova a linha vazia.", variant: "destructive" });
+      return;
+    }
     const stockValue = form.stock.trim();
     if (!/^\d+$/.test(stockValue)) {
       toast({ title: "Estoque inválido", description: "O estoque não pode ser negativo.", variant: "destructive" });
       return;
     }
     const stockNum = Number(stockValue);
+    if (!Number.isSafeInteger(stockNum) || stockNum > 2147483647) {
+      toast({ title: "Estoque inválido", description: "Informe um número inteiro menor que 2.147.483.648.", variant: "destructive" });
+      return;
+    }
     const priceNum = parseDecimal(form.price);
-    if (priceNum === null || priceNum < 0) {
-      toast({ title: "Preço inválido", description: "O preço não pode ser negativo.", variant: "destructive" });
+    if (priceNum === null || priceNum < 0 || !Number.isSafeInteger(Math.round(priceNum * 100)) || Math.abs(priceNum * 100 - Math.round(priceNum * 100)) > 1e-8) {
+      toast({ title: "Preço inválido", description: "Informe um valor não negativo com no máximo duas casas decimais.", variant: "destructive" });
       return;
     }
     const logistics = [form.shipping_width_cm, form.shipping_height_cm, form.shipping_length_cm, form.shipping_weight_kg].map(parseDecimal);
@@ -197,7 +225,7 @@ const AdminProducts = () => {
     setLoading(true);
 
     const payload = {
-      name: form.name,
+      name,
       description: form.description || null,
       price: priceNum,
       stock: stockNum,
@@ -273,8 +301,8 @@ const AdminProducts = () => {
       ingredients: p.ingredients || "",
       ai_description_short: p.ai_description_short || "",
       ai_description_long: p.ai_description_long || "",
-      ai_benefits: p.ai_benefits || [],
-      ai_faq: p.ai_faq || [],
+      ai_benefits: normalizeBenefits(p.ai_benefits),
+      ai_faq: normalizeFaq(p.ai_faq),
       ai_meta_description: p.ai_meta_description || "",
       ai_keywords: p.ai_keywords || [],
       ai_generated: !!p.ai_generated,
@@ -335,8 +363,8 @@ const AdminProducts = () => {
         ...prev,
         ai_description_short: c.description_short || "",
         ai_description_long: c.description_long || "",
-        ai_benefits: Array.isArray(c.benefits) ? c.benefits : [],
-        ai_faq: Array.isArray(c.faq) ? c.faq : [],
+        ai_benefits: normalizeBenefits(c.benefits),
+        ai_faq: normalizeFaq(c.faq),
         ai_meta_description: c.meta_description || "",
         ai_keywords: Array.isArray(c.keywords) ? c.keywords : [],
         ai_generated: true,
@@ -562,6 +590,17 @@ const AdminProducts = () => {
                 <textarea className={inputClass + " min-h-[60px]"} value={form.ingredients} onChange={(e) => setForm({ ...form, ingredients: e.target.value })} />
               </div>
 
+              <div className="md:col-span-2 space-y-3 rounded-xl border border-border bg-secondary/30 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div><h3 className="font-heading text-sm font-semibold">Perguntas frequentes</h3><p className="text-xs text-muted-foreground">Exibidas na página individual do produto.</p></div>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setForm((prev) => ({ ...prev, ai_faq: [...prev.ai_faq, { q: "", a: "" }] }))}><Plus className="mr-1 h-4 w-4" /> Adicionar pergunta</Button>
+                </div>
+                {form.ai_faq.map((item, index) => <div key={index} className="grid gap-2 rounded-lg border border-border bg-card p-3">
+                  <div className="flex items-center gap-2"><input aria-label={`Pergunta ${index + 1}`} className={inputClass} value={item.q} placeholder="Pergunta" onChange={(event) => setForm((prev) => ({ ...prev, ai_faq: prev.ai_faq.map((faq, faqIndex) => faqIndex === index ? { ...faq, q: event.target.value } : faq) }))} /><button type="button" aria-label={`Remover pergunta ${index + 1}`} onClick={() => setForm((prev) => ({ ...prev, ai_faq: prev.ai_faq.filter((_, faqIndex) => faqIndex !== index) }))} className="rounded-lg p-2 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></button></div>
+                  <textarea aria-label={`Resposta ${index + 1}`} className={inputClass + " min-h-[70px]"} value={item.a} placeholder="Resposta" onChange={(event) => setForm((prev) => ({ ...prev, ai_faq: prev.ai_faq.map((faq, faqIndex) => faqIndex === index ? { ...faq, a: event.target.value } : faq) }))} />
+                </div>)}
+              </div>
+
               <div className="md:col-span-2 border border-border rounded-xl p-4 bg-secondary/40 space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
@@ -592,14 +631,6 @@ const AdminProducts = () => {
                         className={inputClass + " min-h-[80px]"}
                         value={(form.ai_benefits || []).join("\n")}
                         onChange={(e) => setForm({ ...form, ai_benefits: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground">FAQ (JSON)</label>
-                      <textarea
-                        className={inputClass + " min-h-[100px] font-mono text-xs"}
-                        value={JSON.stringify(form.ai_faq || [], null, 2)}
-                        onChange={(e) => { try { setForm({ ...form, ai_faq: JSON.parse(e.target.value) }); } catch {} }}
                       />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -634,7 +665,7 @@ const AdminProducts = () => {
                 </label>
               </div>
               <div className="md:col-span-2">
-                <Button type="submit" disabled={loading} className="w-full">
+                <Button type="submit" disabled={loading || uploading} className="w-full">
                   {loading ? "Salvando..." : editingId ? "Atualizar Produto" : "Criar Produto"}
                 </Button>
               </div>

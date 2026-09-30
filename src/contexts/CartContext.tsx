@@ -19,7 +19,7 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[];
   isOpen: boolean;
-  addItem: (product: CartProduct) => void;
+  addItem: (product: CartProduct, quantity?: number) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -52,17 +52,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [isOpen, setIsOpen] = useState(false);
 
-  const addItem = useCallback((product: CartProduct) => {
+  const addItem = useCallback((product: CartProduct, quantity = 1) => {
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || (product.stock != null && product.stock < 1)) return;
     setItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
           return prev.map((item) =>
             item.product.id === product.id
-            ? { ...item, quantity: product.stock != null ? Math.min(item.quantity + 1, product.stock) : item.quantity + 1 }
+            ? { product, quantity: product.stock != null ? Math.min(item.quantity + quantity, product.stock) : item.quantity + quantity }
             : item
         );
       }
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product, quantity: product.stock != null ? Math.min(quantity, product.stock) : quantity }];
     });
     setIsOpen(true);
   }, []);
