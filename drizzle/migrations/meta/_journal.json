@@ -15,6 +15,13 @@
       "when": 1790777553371,
       "tag": "0001_product_image_gallery",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790778079196,
+      "tag": "0002_product_image_gallery",
+      "breakpoints": true
     }
   ]
 }
