@@ -6,5 +6,5 @@
 - [x] Publicar e testar calculate-shipping com logs.
 - [x] Testar Preview em desktop e celular sem compra real.
 - [x] Executar Quick scan.
-- [ ] Publicar frontend somente se todos os testes passarem.
-- [ ] Validar site publicado e relatar URL, commit e erros.
+- [x] Publicar frontend somente se todos os testes passarem.
+- [x] Validar site publicado e relatar URL, commit e erros.
