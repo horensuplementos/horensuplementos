@@ -653,6 +653,7 @@ export type Database = {
           flavor: string | null
           id: string
           image_url: string | null
+          image_urls: string[]
           ingredients: string | null
           name: string
           price: number
@@ -679,6 +680,7 @@ export type Database = {
           flavor?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[]
           ingredients?: string | null
           name: string
           price: number
@@ -705,6 +707,7 @@ export type Database = {
           flavor?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[]
           ingredients?: string | null
           name?: string
           price?: number
