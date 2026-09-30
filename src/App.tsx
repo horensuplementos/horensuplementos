@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,26 +7,27 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import Index from "./pages/Index.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
-import Blog from "./pages/Blog.tsx";
-import Calculators from "./pages/Calculators.tsx";
-import Auth from "./pages/Auth.tsx";
-import Checkout from "./pages/Checkout.tsx";
-import CheckoutStatus from "./pages/CheckoutStatus.tsx";
-import AccountOrders from "./pages/AccountOrders.tsx";
-import NotFound from "./pages/NotFound.tsx";
 import AdminRoute from "./components/AdminRoute.tsx";
-import Dashboard from "./pages/admin/Dashboard.tsx";
-import AdminCoupons from "./pages/admin/AdminCoupons.tsx";
-import AdminProducts from "./pages/admin/AdminProducts.tsx";
-import AdminOrders from "./pages/admin/AdminOrders.tsx";
-import AdminContentEditor from "./pages/admin/AdminContentEditor.tsx";
-import AdminBlog from "./pages/admin/AdminBlog.tsx";
-import AdminManagers from "./pages/admin/AdminManagers.tsx";
-import AdminMetrics from "./pages/admin/AdminMetrics.tsx";
-import AdminBling from "./pages/admin/AdminBling.tsx";
-import AdminSettings from "./pages/admin/AdminSettings.tsx";
-import AcceptInvite from "./pages/AcceptInvite.tsx";
 import { SiteContentProvider } from "./contexts/SiteContentContext";
+
+const Blog = lazy(() => import("./pages/Blog.tsx"));
+const Calculators = lazy(() => import("./pages/Calculators.tsx"));
+const Auth = lazy(() => import("./pages/Auth.tsx"));
+const Checkout = lazy(() => import("./pages/Checkout.tsx"));
+const CheckoutStatus = lazy(() => import("./pages/CheckoutStatus.tsx"));
+const AccountOrders = lazy(() => import("./pages/AccountOrders.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite.tsx"));
+const Dashboard = lazy(() => import("./pages/admin/Dashboard.tsx"));
+const AdminCoupons = lazy(() => import("./pages/admin/AdminCoupons.tsx"));
+const AdminProducts = lazy(() => import("./pages/admin/AdminProducts.tsx"));
+const AdminOrders = lazy(() => import("./pages/admin/AdminOrders.tsx"));
+const AdminContentEditor = lazy(() => import("./pages/admin/AdminContentEditor.tsx"));
+const AdminBlog = lazy(() => import("./pages/admin/AdminBlog.tsx"));
+const AdminManagers = lazy(() => import("./pages/admin/AdminManagers.tsx"));
+const AdminMetrics = lazy(() => import("./pages/admin/AdminMetrics.tsx"));
+const AdminBling = lazy(() => import("./pages/admin/AdminBling.tsx"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -37,6 +39,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center" role="status" aria-label="Carregando página"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/produto/:id" element={<ProductDetail />} />
@@ -67,6 +70,7 @@ const App = () => (
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </BrowserRouter>
         </SiteContentProvider>
       </CartProvider>
