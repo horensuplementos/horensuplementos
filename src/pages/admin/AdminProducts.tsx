@@ -65,6 +65,13 @@ const emptyForm: ProductForm = {
   shipping_weight_kg: "0.5",
 };
 
+const parseDecimal = (value: string) => {
+  const normalized = value.trim().replace(",", ".");
+  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return null;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+};
+
 const AdminProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -171,19 +178,20 @@ const AdminProducts = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const stockNum = parseInt(form.stock);
-    if (isNaN(stockNum) || stockNum < 0) {
+    const stockValue = form.stock.trim();
+    if (!/^\d+$/.test(stockValue)) {
       toast({ title: "Estoque inválido", description: "O estoque não pode ser negativo.", variant: "destructive" });
       return;
     }
-    const priceNum = parseFloat(form.price);
-    if (isNaN(priceNum) || priceNum < 0) {
+    const stockNum = Number(stockValue);
+    const priceNum = parseDecimal(form.price);
+    if (priceNum === null || priceNum < 0) {
       toast({ title: "Preço inválido", description: "O preço não pode ser negativo.", variant: "destructive" });
       return;
     }
-    const logistics = [form.shipping_width_cm, form.shipping_height_cm, form.shipping_length_cm, form.shipping_weight_kg].map(Number);
-    if (logistics.some((value) => !Number.isFinite(value) || value <= 0)) {
-      toast({ title: "Dados logísticos inválidos", description: "Informe dimensões e peso maiores que zero.", variant: "destructive" });
+    const logistics = [form.shipping_width_cm, form.shipping_height_cm, form.shipping_length_cm, form.shipping_weight_kg].map(parseDecimal);
+    if (logistics.some((value) => value === null || value <= 0)) {
+      toast({ title: "Dados logísticos inválidos", description: "Informe dimensões e peso maiores que zero, usando vírgula ou ponto para decimais.", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -210,10 +218,10 @@ const AdminProducts = () => {
       ai_generated: form.ai_generated,
       ai_generated_at: form.ai_generated_at,
       ai_history: form.ai_history || [],
-      shipping_width_cm: logistics[0],
-      shipping_height_cm: logistics[1],
-      shipping_length_cm: logistics[2],
-      shipping_weight_kg: logistics[3],
+      shipping_width_cm: logistics[0]!,
+      shipping_height_cm: logistics[1]!,
+      shipping_length_cm: logistics[2]!,
+      shipping_weight_kg: logistics[3]!,
     } as any;
 
     let saved = false;
@@ -383,7 +391,7 @@ const AdminProducts = () => {
             </button>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form noValidate onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Nome *</label>
                 <input
@@ -396,8 +404,8 @@ const AdminProducts = () => {
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Preço *</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   className={inputClass}
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
@@ -432,14 +440,13 @@ const AdminProducts = () => {
               <div>
                 <label className="text-sm font-body text-muted-foreground mb-1 block">Estoque *</label>
                 <input
-                  type="number"
-                  min={0}
-                  step={1}
+                  type="text"
+                  inputMode="numeric"
                   className={inputClass}
                   value={form.stock}
                   onChange={(e) => {
                     const v = e.target.value;
-                    if (v === "" || parseInt(v) >= 0) setForm({ ...form, stock: v });
+                    if (v === "" || /^\d+$/.test(v)) setForm({ ...form, stock: v });
                   }}
                   required
                 />
@@ -447,18 +454,17 @@ const AdminProducts = () => {
               <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3 rounded-xl border border-border bg-secondary/30 p-4">
                 <p className="col-span-full text-sm font-heading font-semibold text-foreground">Dados para cálculo de frete</p>
                 {[
-                  ["Largura (cm)", "shipping_width_cm", "0.1"],
-                  ["Altura (cm)", "shipping_height_cm", "0.1"],
-                  ["Comprimento (cm)", "shipping_length_cm", "0.1"],
-                  ["Peso (kg)", "shipping_weight_kg", "0.001"],
-                ].map(([label, key, step]) => (
+                  ["Largura (cm)", "shipping_width_cm"],
+                  ["Altura (cm)", "shipping_height_cm"],
+                  ["Comprimento (cm)", "shipping_length_cm"],
+                  ["Peso (kg)", "shipping_weight_kg"],
+                ].map(([label, key]) => (
                   <div key={key}>
                     <label className="text-xs font-body text-muted-foreground mb-1 block">{label}</label>
                     <input
-                      type="number"
-                      min="0.001"
-                      step={step}
-                      required
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Ex: 20 ou 20,5"
                       className={inputClass}
                       value={form[key as keyof Pick<ProductForm, "shipping_width_cm" | "shipping_height_cm" | "shipping_length_cm" | "shipping_weight_kg">]}
                       onChange={(e) => setForm({ ...form, [key]: e.target.value })}
