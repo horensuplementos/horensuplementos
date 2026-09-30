@@ -60,7 +60,7 @@ const BRAZILIAN_STATES = [
 ];
 
 const Checkout = () => {
-  const { items, totalPrice, clearCart, sessionKey } = useCart();
+  const { items, totalPrice, clearCart, refreshCart, sessionKey } = useCart();
   const [user, setUser] = useState<any>(null);
   const [form, setForm] = useState({
     name: "",
@@ -106,6 +106,20 @@ const Checkout = () => {
   const [deliveryMode, setDeliveryMode] = useState<"shipping" | "pickup">("shipping");
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    void refreshCart().then((result) => {
+      if (result === "changed") toast({ title: "Carrinho atualizado", description: "Preço, estoque ou disponibilidade mudaram. Revise os itens antes de continuar." });
+    });
+  }, [refreshCart, toast]);
+
+  useEffect(() => {
+    if (deliveryMode === "shipping") {
+      setShippingOptions([]);
+      setSelectedShipping(null);
+    }
+    setAppliedCoupon(null);
+  }, [items, deliveryMode]);
 
   const subtotal = totalPrice;
   const shippingTotal = selectedShipping?.price || 0;
@@ -368,6 +382,12 @@ const Checkout = () => {
     }
     if (items.length === 0) return;
 
+    const cartStatus = await refreshCart();
+    if (cartStatus !== "unchanged") {
+      toast({ title: "Revise o carrinho", description: cartStatus === "error" ? "Não foi possível conferir os produtos. Tente novamente." : "Produtos ou preços foram atualizados. Calcule o frete novamente.", variant: "destructive" });
+      return;
+    }
+
     setLoadingShipping(true);
     setShippingOptions([]);
     setSelectedShipping(null);
@@ -375,12 +395,7 @@ const Checkout = () => {
     try {
       const products = items.map((item) => ({
         id: item.product.id,
-        width: 20,
-        height: 10,
-        length: 30,
-        weight: 0.5,
         quantity: item.quantity,
-        insurance_value: item.product.price * item.quantity,
       }));
 
       const { data, error } = await supabase.functions.invoke("calculate-shipping", {
@@ -480,6 +495,12 @@ const Checkout = () => {
 
     if (normalizedCpf.length !== 11) {
       toast({ title: "Informe um CPF válido", variant: "destructive" });
+      return;
+    }
+
+    const cartStatus = await refreshCart();
+    if (cartStatus !== "unchanged") {
+      toast({ title: "Revise o carrinho", description: cartStatus === "error" ? "Não foi possível conferir os produtos. Tente novamente." : "Produtos ou preços mudaram. Confira o carrinho e recalcule o frete.", variant: "destructive" });
       return;
     }
 

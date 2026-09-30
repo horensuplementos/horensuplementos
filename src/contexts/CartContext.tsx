@@ -23,6 +23,7 @@ interface CartContextType {
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
+  refreshCart: () => Promise<"unchanged" | "changed" | "error">;
   toggleCart: () => void;
   openCart: () => void;
   closeCart: () => void;
@@ -33,15 +34,20 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const readStoredItems = (): CartItem[] => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("horen_cart_items") || "[]");
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((item) => item && item.product &&
+      typeof item.product.id === "string" && typeof item.product.name === "string" &&
+      Number.isFinite(item.product.price) && item.product.price >= 0 &&
+      Number.isSafeInteger(item.quantity) && item.quantity > 0)
+      .map((item) => ({ ...item, quantity: Math.min(item.quantity, 50) }));
+  } catch { return []; }
+};
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    try {
-      const stored = localStorage.getItem("horen_cart_items");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [items, setItems] = useState<CartItem[]>(readStoredItems);
   const [sessionKey, setSessionKey] = useState(() => {
     const storageKey = "horen_cart_session_key";
     const existing = localStorage.getItem(storageKey);
@@ -59,11 +65,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (existing) {
           return prev.map((item) =>
             item.product.id === product.id
-            ? { product, quantity: product.stock != null ? Math.min(item.quantity + quantity, product.stock) : item.quantity + quantity }
+            ? { product, quantity: Math.min(item.quantity + quantity, product.stock ?? 50, 50) }
             : item
         );
       }
-      return [...prev, { product, quantity: product.stock != null ? Math.min(quantity, product.stock) : quantity }];
+      return [...prev, { product, quantity: Math.min(quantity, product.stock ?? 50, 50) }];
     });
     setIsOpen(true);
   }, []);
@@ -80,7 +86,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems((prev) =>
       prev.map((item) =>
         item.product.id === productId
-          ? { ...item, quantity: item.product.stock != null ? Math.min(quantity, item.product.stock) : quantity }
+          ? { ...item, quantity: Math.min(quantity, item.product.stock ?? 50, 50) }
           : item
       )
     );
@@ -92,6 +98,32 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([]);
     setSessionKey(nextSessionKey);
   }, []);
+
+  const refreshCart = useCallback(async (): Promise<"unchanged" | "changed" | "error"> => {
+    if (!items.length) return "unchanged";
+    const requestedIds = new Set(items.map((item) => item.product.id));
+    const { data, error } = await supabase.from("products")
+      .select("id, name, price, stock, image_url, image_urls, weight, category, active")
+      .in("id", [...requestedIds]).eq("active", true);
+    if (error) return "error";
+    const catalog = new Map((data || []).map((product) => [product.id, product]));
+    const reconcile = (current: CartItem[]): CartItem[] => current.flatMap((item) => {
+      if (!requestedIds.has(item.product.id)) return [item];
+      const product = catalog.get(item.product.id);
+      if (!product || product.stock <= 0) return [];
+      return [{
+        product: {
+          id: product.id, name: product.name, price: product.price, stock: product.stock,
+          image_url: product.image_urls?.[0] || product.image_url,
+          weight: product.weight, category: product.category,
+        },
+        quantity: Math.min(item.quantity, product.stock, 50),
+      }];
+    });
+    const changed = JSON.stringify(reconcile(items)) !== JSON.stringify(items);
+    if (changed) setItems((current) => reconcile(current));
+    return changed ? "changed" : "unchanged";
+  }, [items]);
   const toggleCart = useCallback(() => setIsOpen((p) => !p), []);
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
@@ -125,7 +157,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <CartContext.Provider
       value={{
         items, isOpen, addItem, removeItem, updateQuantity,
-        clearCart, toggleCart, openCart, closeCart, totalItems, totalPrice, sessionKey,
+        clearCart, refreshCart, toggleCart, openCart, closeCart, totalItems, totalPrice, sessionKey,
       }}
     >
       {children}
