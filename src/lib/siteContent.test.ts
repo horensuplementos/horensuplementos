@@ -11,6 +11,8 @@ describe("getSafeInternalPath", () => {
     expect(getSafeInternalPath("https://example.com", "/")).toBe("/");
     expect(getSafeInternalPath("//example.com", "/")).toBe("/");
     expect(getSafeInternalPath("/\\example.com", "/")).toBe("/");
+    expect(getSafeInternalPath("/%5cexample.com", "/")).toBe("/");
+    expect(getSafeInternalPath("/%2fexample.com", "/")).toBe("/");
     expect(getSafeInternalPath("/conta\n", "/")).toBe("/");
   });
 });
