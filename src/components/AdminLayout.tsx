@@ -35,7 +35,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     <div className="min-h-screen bg-background flex">
       <aside className="w-64 bg-card border-r border-border flex flex-col">
         <div className="p-6 border-b border-border">
-          <h1 className="font-heading text-lg font-bold text-foreground">Painel Admin</h1>
+          <p className="font-heading text-lg font-bold text-foreground">Painel Admin</p>
           <p className="text-xs text-muted-foreground font-body mt-1">Horen Suplementos</p>
           {permissionLevel && (
             <p className="text-[11px] text-primary font-body uppercase tracking-[0.18em] mt-3">

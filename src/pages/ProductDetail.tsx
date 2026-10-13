@@ -9,6 +9,7 @@ import Header from "@/components/Header";
 import CartDrawer from "@/components/CartDrawer";
 import Footer from "@/components/Footer";
 import type { Tables } from "@/integrations/supabase/types";
+import { applyPageMetadata, getProductMetadata, getRouteMetadata } from "@/lib/seo";
 
 type Product = Tables<"products">;
 type FaqItem = { q: string; a: string };
@@ -78,17 +79,13 @@ const ProductDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    if (!product) return;
-    const previousTitle = document.title;
-    document.title = `${product.name} | Horen Suplementos`;
-    const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-    const previousDescription = description?.content;
-    if (description) description.content = product.ai_meta_description?.trim() || product.ai_description_short?.trim() || product.description?.trim().slice(0, 160) || previousDescription || "";
-    return () => {
-      document.title = previousTitle;
-      if (description && previousDescription !== undefined) description.content = previousDescription;
-    };
-  }, [product]);
+    if (product && product.id === id) applyPageMetadata(getProductMetadata(product));
+    else if (status === "not-found" || status === "error") applyPageMetadata({
+      ...getRouteMetadata(`/produto/${id || ""}`),
+      title: "Produto indisponível | Horen Suplementos",
+      noIndex: true,
+    });
+  }, [product, status, id]);
 
   if (status === "loading") return <div className="min-h-screen bg-background flex items-center justify-center" role="status" aria-label="Carregando produto"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 

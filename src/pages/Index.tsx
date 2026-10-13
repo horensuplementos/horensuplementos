@@ -10,11 +10,14 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <CartDrawer />
-      <div className="pt-20">
-        <HeroBanner />
-      </div>
-      <ProductsSection />
-      <AboutSection />
+      <main>
+        <h1 className="sr-only">Horen Suplementos — suplementação de alta performance</h1>
+        <div className="pt-20">
+          <HeroBanner />
+        </div>
+        <ProductsSection />
+        <AboutSection />
+      </main>
       <Footer />
     </div>
   );

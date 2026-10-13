@@ -9,6 +9,7 @@ import Index from "./pages/Index.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import AdminRoute from "./components/AdminRoute.tsx";
 import { SiteContentProvider } from "./contexts/SiteContentContext";
+import SiteSeo from "./components/SiteSeo";
 
 const Blog = lazy(() => import("./pages/Blog.tsx"));
 const Calculators = lazy(() => import("./pages/Calculators.tsx"));
@@ -39,6 +40,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <SiteSeo />
             <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center" role="status" aria-label="Carregando página"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
             <Routes>
               <Route path="/" element={<Index />} />
