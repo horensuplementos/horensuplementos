@@ -13,6 +13,8 @@ const product = {
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+  let uncaughtErrors = 0;
+  page.on("pageerror", () => { uncaughtErrors += 1; });
   // Isolate browser checks from the Live backend, including cart RPC writes.
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
@@ -59,7 +61,11 @@ try {
   await page.waitForFunction(() => document.querySelector('link[rel="canonical"]').href.endsWith("/blog"));
   assert.equal(await page.locator('link[rel="canonical"]').getAttribute("href"), `${siteUrl}blog`);
   assert.equal(await page.locator("h1").count(), 1);
-  console.log("Navegador validado: H1 único, canonical por rota, JSON-LD e arquivos estáticos disponíveis, sem acesso ao Live.");
+  await page.goto(`${baseUrl}/auth`);
+  await page.getByRole("heading", { level: 1, name: "Entrar na sua conta", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Entrar", exact: true }).isEnabled(), true);
+  assert.equal(uncaughtErrors, 0, "Falha de inicialização ou erro JavaScript não tratado no bundle publicado.");
+  console.log("Navegador validado: home, produto, blog e tela de login sem erro JavaScript; SEO e arquivos estáticos disponíveis, sem acesso ao Live.");
 } finally {
   await browser.close();
 }
