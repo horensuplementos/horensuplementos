@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Environment files stay local or in the hosting platform's environment store.
+# These basename patterns also cover nested directories and all .env variants.
+.env
+.env.*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

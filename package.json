@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "check:env": "node scripts/check-env-tracking.mjs",
+    "hooks:install": "node scripts/install-env-hooks.mjs",
+    "test:env-guard": "node --test scripts/check-env-tracking.test.mjs",
     "assets:generate": "node scripts/generate-site-assets.mjs",
     "icons:generate": "node scripts/generate-site-icons.mjs",
     "verify:seo": "node scripts/verify-seo.mjs",
