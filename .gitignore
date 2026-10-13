@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files must never be committed, including nested variants.
+.env
+.env.*
